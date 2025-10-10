@@ -1,0 +1,42 @@
+{
+  "files": {
+    "main.css": "/static/css/main.db9109a8.css",
+    "main.js": "/static/js/main.cedc764a.js",
+    "static/js/977.4687b342.chunk.js": "/static/js/977.4687b342.chunk.js",
+    "static/js/455.242601ac.chunk.js": "/static/js/455.242601ac.chunk.js",
+    "static/js/453.4a0bd44a.chunk.js": "/static/js/453.4a0bd44a.chunk.js",
+    "static/media/logocyberbells.png": "/static/media/logocyberbells.26118675f8f69e23e45b.png",
+    "static/media/LOGO.png": "/static/media/LOGO.e5ec37b5ce3b2d314b23.png",
+    "static/media/tasktrack.png": "/static/media/tasktrack.5b981728d2ce95cf7167.png",
+    "static/media/employemanagent.png": "/static/media/employemanagent.84a7340bafb3839e8e4e.png",
+    "static/media/attendance.png": "/static/media/attendance.caef939ef48ead360a40.png",
+    "static/media/timetrack.png": "/static/media/timetrack.e72fcee753b60bbf0590.png",
+    "static/media/leavemanage.png": "/static/media/leavemanage.af0d05bd783e3468ac74.png",
+    "static/media/salarycalculate.png": "/static/media/salarycalculate.7124c7dadbef61ab7a6f.png",
+    "static/media/appstore.svg": "/static/media/appstore.2fe9c32a5b609b0a799f8c612451c368.svg",
+    "static/media/forbes-1.svg": "/static/media/forbes-1.c92fc65b8fe1ffe7bdeaf4bc850d1d1c.svg",
+    "static/media/cyberlogo.png": "/static/media/cyberlogo.de719d1896d3bee09b4d.png",
+    "static/media/jll.webp": "/static/media/jll.6b31bedf21dc3a5dc6a0.webp",
+    "static/media/nhs.webp": "/static/media/nhs.8fdd5c25d6d443a41f63.webp",
+    "static/media/harvard.webp": "/static/media/harvard.307c05d9cbe7e9cf6a0c.webp",
+    "static/media/male_svg.svg": "/static/media/male_svg.23eee0e3afc852d7d0cfddf3461aaad5.svg",
+    "static/media/pizzahut.webp": "/static/media/pizzahut.da7ace6ed10c221581e1.webp",
+    "static/media/pepsi.webp": "/static/media/pepsi.095f7876fdb59f07cb6c.webp",
+    "static/media/female_svg.svg": "/static/media/female_svg.c77e537fe4eaa9c0034ac479b2004c4d.svg",
+    "static/media/capterra.webp": "/static/media/capterra.3e276d9f315626e68d50.webp",
+    "static/media/tesla.webp": "/static/media/tesla.fde552434d4e343507a6.webp",
+    "static/media/googleplay.webp": "/static/media/googleplay.c539b5787ae9f3ad0909.webp",
+    "static/media/neom.webp": "/static/media/neom.3a7d9ab351d2ce0ae216.webp",
+    "static/media/hyundai.webp": "/static/media/hyundai.c08e7b8202212da4d1b6.webp",
+    "index.html": "/index.html",
+    "main.db9109a8.css.map": "/static/css/main.db9109a8.css.map",
+    "main.cedc764a.js.map": "/static/js/main.cedc764a.js.map",
+    "977.4687b342.chunk.js.map": "/static/js/977.4687b342.chunk.js.map",
+    "455.242601ac.chunk.js.map": "/static/js/455.242601ac.chunk.js.map",
+    "453.4a0bd44a.chunk.js.map": "/static/js/453.4a0bd44a.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.db9109a8.css",
+    "static/js/main.cedc764a.js"
+  ]
+}

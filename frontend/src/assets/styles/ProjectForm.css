@@ -1,0 +1,12 @@
+.error-message {
+  color: #ff0000;
+  font-size: 12px;
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+/* Add this if you want the input to show red border when there's an error */
+.project-form input.error,
+.project-form textarea.error {
+  border-color: #ff0000;
+}
