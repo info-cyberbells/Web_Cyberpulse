@@ -1,5 +1,5 @@
 import express from 'express';
-import { addAttendance, fetchAllAttendance, getMonthlyAttendance, calculateMonthlySalaries,  getMonthlySummary,getPreviousDayAutoClockOutEmployees, fetchAllAttendanceByDate, getAttendanceAndTasksByEmployeeAndDate, getAttendanceAndTasksByEmployeeAndMonth, getAttendanceById, updateAttendance, deleteAttendance, getAllEmployeesAttendanceAndTasksByDate } from '../controller/attendanceController.js';
+import { addAttendance, fetchAllAttendance, getMonthlyAttendance, calculateMonthlySalaries,  getMonthlySummary,getPreviousDayAutoClockOutEmployees, fetchAllAttendanceByDate, getAttendanceAndTasksByEmployeeAndDate, getAttendanceAndTasksByEmployeeAndMonth, getAttendanceById, updateAttendance, deleteAttendance, getAllEmployeesAttendanceAndTasksByDate, fetchClockDataMonthly } from '../controller/attendanceController.js';
 console.log('Inside project route');
 const routerAttendance = express.Router();
 
@@ -11,6 +11,9 @@ routerAttendance.get('/task', getAttendanceAndTasksByEmployeeAndDate);
 routerAttendance.get('/currentEmpAttendance', getAllEmployeesAttendanceAndTasksByDate);
 
 routerAttendance.get("/previousDayAutoClockout", getPreviousDayAutoClockOutEmployees);
+
+
+routerAttendance.get("/fetchMonthlyClockData", fetchClockDataMonthly);
 
 routerAttendance.get("/monthlyAttendence", getMonthlyAttendance);
 

@@ -42,6 +42,51 @@ const handleBase64Image = async (base64Image, folder, employeeId) => {
   }
 };
 
+
+export const fetchClockDataMonthly = async (req, res) => {
+  try {
+
+    const { month } = req.body; // month passed in body
+
+    if (!month) {
+      return res.status(400).json({ error: "Month is required" });
+    }
+
+    const [year, mon] = month.split("-").map(Number);
+    if (!year || !mon || mon < 1 || mon > 12) {
+      return res.status(400).json({ error: "Invalid month format. Use YYYY-MM" });
+    }
+
+    
+    let filter = {};
+
+    // Filter by month
+    const start = new Date(year, mon - 1, 1);
+    const end = new Date(year, mon, 1); // first day of next month
+    filter.date = { $gte: start, $lt: end };
+
+    const attendanceRecords = await Attendance.find(filter)
+      .populate("employeeId", "name email organizationId" ) 
+
+    if (!attendanceRecords.length) {
+      return res.status(404).json({ message: "No attendance records found" });
+    }
+
+    const filtered = attendanceRecords.map((record) => ({
+      employeeId: record.employeeId,
+      date: record.date,
+      clockInTime: record.clockInTime,
+      autoClockOut: record.autoClockOut,
+      clockOutTime: record.clockOutTime
+    }));
+
+    res.status(200).json({ attendance: filtered });
+  } catch (error) {
+    console.error("Error fetching attendance:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 export const addAttendance = async (req, res) => {
   try {
     const {

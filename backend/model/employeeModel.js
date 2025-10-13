@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 
+
 const employeeSchema = new mongoose.Schema(
   {
 
@@ -81,6 +82,15 @@ const employeeSchema = new mongoose.Schema(
     comments: {
       type: String,
       required: false,
+    },
+    lastWorkingDay: {
+      type:Date,
+    },
+    duesStatus:{
+      type: String,
+    },
+    lastDuePayDate:{
+      type: Date,
     },
     futureHiring: {
       type: String,

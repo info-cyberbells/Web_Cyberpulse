@@ -126,6 +126,11 @@ const EmployeeManagement = ({ open, onClose, onConfirm }) => {
 
   const [reason, setReason] = React.useState('');
   const [comments, setComments] = React.useState('');
+
+  const [lastWorkingDay, setLastWorkingDay] = React.useState('');
+  const [duesStatus, setDuesStatus] = React.useState('');
+  const [lastDuePayDate, setLastDuePayDate] = React.useState('');
+
   const [futureHiring, setFutureHiring] = React.useState('maybe');
 
   const [gender, setGender] = useState("");
@@ -166,6 +171,25 @@ const EmployeeManagement = ({ open, onClose, onConfirm }) => {
       return;
     }
 
+    
+  if (!lastWorkingDay) {
+    toast.dismiss();
+    toast.error("Please select the last working day");
+    return;
+  }
+
+  if (!duesStatus) {
+    toast.dismiss();
+    toast.error("Please select the dues status");
+    return;
+  }
+
+  if (duesStatus === "pending" && !lastDuePayDate) {
+    toast.dismiss();
+    toast.error("Please specify the last due pay date");
+    return;
+  }
+
     if (selectedEmployee && selectedEmployee._id) {
       try {
         const statusData = {
@@ -173,6 +197,9 @@ const EmployeeManagement = ({ open, onClose, onConfirm }) => {
           reason,
           comments,
           futureHiring,
+          lastWorkingDay,
+          lastDuePayDate,
+          duesStatus
         };
 
         await dispatch(updateEmployeeStatusAsync({
@@ -271,6 +298,9 @@ const EmployeeManagement = ({ open, onClose, onConfirm }) => {
     setSelectedEmployee(null);
     setReason("");
     setComments("");
+    setDuesStatus("");
+    setLastWorkingDay("");
+    setLastDuePayDate("");
     setFutureHiring("maybe");
   };
 
@@ -340,6 +370,11 @@ const EmployeeManagement = ({ open, onClose, onConfirm }) => {
       status: selectedEmployee?.status === "0" ? "1" : "1",
       reason: selectedEmployee?.status === "0" ? "" : undefined,
       comments: selectedEmployee?.status === "0" ? "" : undefined,
+    
+      lastWorkingDay : selectedEmployee?.status === "0" ? "" : undefined,
+      duesStatus : selectedEmployee?.status === "0" ? "" : undefined,
+      lastDuePayDate : selectedEmployee?.status === "0" ? "" : undefined,
+
       futureHiring: selectedEmployee?.status === "0" ? "" : undefined,
       salary,
       incrementcycle: incrementCycle,
@@ -618,6 +653,7 @@ const EmployeeManagement = ({ open, onClose, onConfirm }) => {
     return isValid;
   };
 
+  //------------------------------------------------------------------------------------
   const handleOpenDeleteModal = (employee) => {
     setSelectedEmployee(employee);
     setDeleteConfirmOpen(true);
@@ -625,10 +661,16 @@ const EmployeeManagement = ({ open, onClose, onConfirm }) => {
     if (employee.status === "0") {
       setReason(employee.reason || "");
       setComments(employee.comments || "");
+      setLastWorkingDay(employee.lastWorkingDay ? employee.lastWorkingDay.slice(0, 10) : "");
+      setDuesStatus(employee.duesStatus || "");
+      setLastDuePayDate(employee.lastDuePayDate ? employee.lastDuePayDate.slice(0, 10) : "");
       setFutureHiring(employee.futureHiring || "maybe");
     } else {
       setReason("");
       setComments("");
+      setDuesStatus("");
+      setLastDuePayDate("");
+      setLastWorkingDay("");
       setFutureHiring("maybe");
     }
   };
@@ -1703,6 +1745,67 @@ const EmployeeManagement = ({ open, onClose, onConfirm }) => {
               },
             }}
           />
+          
+          {/* New Fields Start Here */}
+            <TextField
+              fullWidth
+              margin="normal"
+              label="Last Working Day"
+              type="date"
+              value={lastWorkingDay}
+              onChange={(e) => setLastWorkingDay(e.target.value)}
+              disabled={isViewOnly}
+              InputLabelProps={{ shrink: true }}
+              sx={{
+                backgroundColor: '#fff',
+                borderRadius: '8px',
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': { borderColor: '#e0e0e0' },
+                  '&:hover fieldset': { borderColor: '#3f51b5' },
+                },
+              }}
+            />
+
+            <FormControl fullWidth margin="normal">
+              <InputLabel sx={{ fontWeight: 500, color: '#1a237e' }}>
+                Dues Status
+              </InputLabel>
+              <Select
+                value={duesStatus}
+                onChange={(e) => setDuesStatus(e.target.value)}
+                label="Dues Status"
+                disabled={isViewOnly}
+                sx={{
+                  backgroundColor: '#fff',
+                  borderRadius: '8px',
+                  '& .MuiSelect-select': { padding: '12px' },
+                }}
+              >
+                <MenuItem value="cleared">Cleared</MenuItem>
+                <MenuItem value="pending">Pending</MenuItem>
+              </Select>
+            </FormControl>
+
+            <TextField
+              fullWidth
+              margin="normal"
+              label="Last Due Pay Date"
+              type="date"
+              value={lastDuePayDate}
+              onChange={(e) => setLastDuePayDate(e.target.value)}
+              disabled={isViewOnly}
+              InputLabelProps={{ shrink: true }}
+              sx={{
+                backgroundColor: '#fff',
+                borderRadius: '8px',
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': { borderColor: '#e0e0e0' },
+                  '&:hover fieldset': { borderColor: '#3f51b5' },
+                },
+              }}
+            />
+            
+            {/* New Fields End */}
           <FormControl component="fieldset" margin="normal">
             <DialogContentText sx={{ color: '#424242', fontWeight: 500 }}>
               Consider for hiring in future?
@@ -1795,6 +1898,7 @@ const EmployeeManagement = ({ open, onClose, onConfirm }) => {
           )}
         </DialogActions>
       </Dialog>
+
 
       <ImageZoomModal
         open={zoomImage.open}
