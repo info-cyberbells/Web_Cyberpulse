@@ -82,6 +82,15 @@ const employeeSchema = new mongoose.Schema(
       type: String,
       required: false,
     },
+    lastWorkingDay: {
+      type:Date,
+    },
+    duesStatus:{
+      type: String,
+    },
+    lastDuePayDate:{
+      type: Date,
+    },
     futureHiring: {
       type: String,
       required: false,

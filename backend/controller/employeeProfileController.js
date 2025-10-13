@@ -104,6 +104,112 @@ export const login = async (req, res) => {
 
 
 
+// export const addEmployee = async (req, res) => {
+//   try {
+//     console.log("Request body:", req.body);
+//     const {
+//       name,
+//       email,
+//       position,
+//       password,
+//       department,
+//       joiningDate,
+//       dob,
+//       jobRole,
+//       address,
+//       pincode,
+//       state,
+//       country,
+//       type,
+//       city,
+//       phone,
+//       gender,
+//       status,
+//       salary,
+//       incrementcycle,
+//       IncrementAmount,
+//       incrementMonth,
+//       organizationId,
+//     } = req.body;
+
+//     // Check if the Employee already exists
+//     const existingEmployee = await Employee.findOne({ email });
+//     if (existingEmployee) {
+//       return res.status(400).json({ error: "Email already exists" });
+//     }
+
+//     // Hash the password before saving
+//     const hashedPassword = await bcrypt.hash(password, 10); // Use a salt rounds value of 10
+
+//     // Create a new employee with the hashed password
+//     const newEmployee = new Employee({
+//       name,
+//       email,
+//       position,
+//       password: hashedPassword, // Use hashed password
+//       department,
+//       joiningDate,
+//       dob,
+//       jobRole,
+//       address,
+//       pincode,
+//       state,
+//       country,
+//       city,
+//       type,
+//       phone,
+//       gender,
+//       status,
+//       salary,
+//       incrementcycle,
+//       IncrementAmount,
+//       incrementMonth,
+//       organizationId,
+//     });
+
+//     // Save the Employee to the database
+//     const savedEmployee = await newEmployee.save();
+
+//     // Create a response object without sensitive information (if needed)
+//     const employeeWithoutSensitiveInfo = {
+//       _id: savedEmployee._id,
+//       name: savedEmployee.name,
+//       email: savedEmployee.email,
+//       position: savedEmployee.position,
+//       department: savedEmployee.department,
+//       joiningDate: savedEmployee.joiningDate,
+//       jobRole: savedEmployee.jobRole,
+//       dob: savedEmployee.dob,
+//       address: savedEmployee.address,
+//       phone: savedEmployee.phone,
+//       city: savedEmployee.city,
+//       pincode: savedEmployee.pincode,
+//       type: savedEmployee.type,
+//       state: savedEmployee.state,
+//       status: savedEmployee.status,
+//       gender: savedEmployee.gender,
+//       salary: savedEmployee.salary,
+//       incrementcycle: savedEmployee.incrementcycle,
+//       IncrementAmount: savedEmployee.IncrementAmount,
+//       incrementMonth: savedEmployee.incrementMonth,
+//       createdAt: savedEmployee.createdAt,
+//       updatedAt: savedEmployee.updatedAt,
+//     };
+//     if (organizationId) {
+//       savedEmployee.organizationId = organizationId;
+//     }
+
+//     // Send a success response
+//     res.status(201).json({
+//       message: "Employee registered successfully",
+//       data: employeeWithoutSensitiveInfo,
+//     });
+//   } catch (error) {
+//     // Handle any errors
+//     res.status(400).json({ error: error.message });
+//   }
+// };
+
 export const addEmployee = async (req, res) => {
   try {
     console.log("Request body:", req.body);
@@ -130,6 +236,9 @@ export const addEmployee = async (req, res) => {
       IncrementAmount,
       incrementMonth,
       organizationId,
+      lastWorkingDay,
+      duesStatus,
+      lastDuePayDate,
     } = req.body;
 
     // Check if the Employee already exists
@@ -165,6 +274,9 @@ export const addEmployee = async (req, res) => {
       IncrementAmount,
       incrementMonth,
       organizationId,
+      lastWorkingDay,
+      duesStatus,
+      lastDuePayDate
     });
 
     // Save the Employee to the database
@@ -194,6 +306,9 @@ export const addEmployee = async (req, res) => {
       incrementMonth: savedEmployee.incrementMonth,
       createdAt: savedEmployee.createdAt,
       updatedAt: savedEmployee.updatedAt,
+      lastWorkingDay: savedEmployee.lastWorkingDay,
+      duesStatus: savedEmployee.duesStatus,
+      lastDuePayDate: savedEmployee.lastDuePayDate,
     };
     if (organizationId) {
       savedEmployee.organizationId = organizationId;
@@ -209,7 +324,6 @@ export const addEmployee = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
-
 
 export const fetchAllEmployee = async (req, res) => {
 
@@ -273,6 +387,9 @@ export const fetchAllEmployee = async (req, res) => {
         updatedAt: employeeObj.updatedAt,
         reason: employeeObj.reason,
         comments: employeeObj.comments,
+        lastWorkingDay: employeeObj.lastWorkingDay,
+        duesStatus: employeeObj.duesStatus,
+        lastDuePayDate: employeeObj.lastDuePayDate,
         futureHiring: employeeObj.futureHiring,
         NameOnBankAccount: employeeObj.NameOnBankAccount,
         BankAccountNumber: employeeObj.BankAccountNumber,
@@ -656,6 +773,9 @@ export const updateProfile = async (req, res) => {
         futureHiring: updatedEmployee.futureHiring,
         reason: updatedEmployee.reason,
         status: updatedEmployee.status,
+        lastWorkingDay : updatedEmployee.lastWorkingDay,
+        duesStatus: updatedEmployee.duesStatus,
+        lastDuePayDate: updatedEmployee.lastDuePayDate,
 
       },
     });
