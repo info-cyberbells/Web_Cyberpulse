@@ -12,6 +12,7 @@ routerAttendance.get('/currentEmpAttendance', getAllEmployeesAttendanceAndTasksB
 
 routerAttendance.get("/previousDayAutoClockout", getPreviousDayAutoClockOutEmployees);
 
+
 routerAttendance.get("/fetchMonthlyClockData", fetchClockDataMonthly);
 
 routerAttendance.get("/monthlyAttendence", getMonthlyAttendance);

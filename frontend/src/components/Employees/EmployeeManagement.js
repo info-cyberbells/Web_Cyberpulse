@@ -1899,6 +1899,7 @@ const EmployeeManagement = ({ open, onClose, onConfirm }) => {
         </DialogActions>
       </Dialog>
 
+
       <ImageZoomModal
         open={zoomImage.open}
         onClose={() => setZoomImage({ open: false, image: null, name: "" })}

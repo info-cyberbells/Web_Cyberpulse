@@ -57,6 +57,7 @@ export const fetchClockDataMonthly = async (req, res) => {
       return res.status(400).json({ error: "Invalid month format. Use YYYY-MM" });
     }
 
+    
     let filter = {};
 
     // Filter by month

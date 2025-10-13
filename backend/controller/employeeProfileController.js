@@ -1045,6 +1045,7 @@ export const sendSalarySlip = async (req, res) => {
       ]
     };
 
+    
     try {
       const info = await emailTransporter.sendMail(emailOptions);
       console.log('Email sent successfully:', info.messageId);
