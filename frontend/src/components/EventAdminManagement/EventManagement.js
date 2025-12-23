@@ -259,9 +259,17 @@ const EventManagement = () => {
       const dobDate = new Date(dob);
       const dojDate = new Date(joiningDate);
 
+      // Birthday this year
       const dobThisYear = new Date(today.getFullYear(), dobDate.getMonth(), dobDate.getDate());
-      const dojThisYear = new Date(today.getFullYear(), dojDate.getMonth(), dojDate.getDate());
+      // Birthday next year (for year-end case)
+      const dobNextYear = new Date(today.getFullYear() + 1, dobDate.getMonth(), dobDate.getDate());
 
+      // Work Anniversary this year
+      const dojThisYear = new Date(today.getFullYear(), dojDate.getMonth(), dojDate.getDate());
+      // Work Anniversary next year (for year-end case)
+      const dojNextYear = new Date(today.getFullYear() + 1, dojDate.getMonth(), dojDate.getDate());
+
+      // Check birthday this year
       if (dobThisYear >= today && dobThisYear <= endOfNextMonth) {
         events.push({
           name,
@@ -272,6 +280,19 @@ const EventManagement = () => {
           daysDiff: differenceInDays(dobThisYear, today)
         });
       }
+      // Check birthday next year (for year-end)
+      else if (dobNextYear >= today && dobNextYear <= endOfNextMonth) {
+        events.push({
+          name,
+          date: dobNextYear,
+          type: "Birthday",
+          icon: <CakeIcon />,
+          image,
+          daysDiff: differenceInDays(dobNextYear, today)
+        });
+      }
+
+      // Check work anniversary this year
       if (dojThisYear >= today && dojThisYear <= endOfNextMonth) {
         events.push({
           name,
@@ -280,6 +301,17 @@ const EventManagement = () => {
           icon: <WorkIcon />,
           image,
           daysDiff: differenceInDays(dojThisYear, today)
+        });
+      }
+      // Check work anniversary next year (for year-end)
+      else if (dojNextYear >= today && dojNextYear <= endOfNextMonth) {
+        events.push({
+          name,
+          date: dojNextYear,
+          type: "Work Anniversary",
+          icon: <WorkIcon />,
+          image,
+          daysDiff: differenceInDays(dojNextYear, today)
         });
       }
     });
@@ -1031,7 +1063,7 @@ const EventManagement = () => {
                 required
                 InputLabelProps={{ shrink: true }}
                 inputProps={{
-                  min: today, 
+                  min: today,
                 }}
               />
             </Grid>
