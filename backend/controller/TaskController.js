@@ -229,7 +229,8 @@ export const updateTask = async (req, res) => {
       description,
       projectName,
       estimatedHours,
-      estimatedMinutes
+      estimatedMinutes,
+      duration  
     } = req.body;
 
     if (!description) {
@@ -252,6 +253,10 @@ export const updateTask = async (req, res) => {
 
     if (estimatedMinutes !== undefined) {
       updateData.estimatedMinutes = Number(estimatedMinutes) || 0;
+    }
+
+     if (duration !== undefined) {
+      updateData.duration = Number(duration) || 0;
     }
 
     const task = await Task.findOneAndUpdate(

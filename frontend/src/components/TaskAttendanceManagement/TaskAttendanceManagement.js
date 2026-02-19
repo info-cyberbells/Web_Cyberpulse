@@ -76,9 +76,19 @@ const TaskAttendanceManagement = ({
     }
 
     return previousTasks.reduce((acc, task) => {
-      if (!task?.createdAt) return acc; // Check if task has createdAt property
+      if (!task?.createdAt) return acc;
 
-      const date = new Date(task.createdAt).toLocaleDateString();
+      // Use assignedDate if available, otherwise use createdAt
+      const taskDate = task.assignedDate ? new Date(task.assignedDate) : new Date(task.createdAt);
+      const today = new Date();
+
+      // Check if task date is today
+      const isToday = taskDate.toDateString() === today.toDateString();
+
+      // Skip tasks that are assigned to today - they should be in Today's Tasks
+      if (isToday) return acc;
+
+      const date = taskDate.toLocaleDateString();
       if (!acc[date]) {
         acc[date] = [];
       }
@@ -90,19 +100,22 @@ const TaskAttendanceManagement = ({
   useEffect(() => {
     const initialTimers = {};
     tasks.forEach((task) => {
-      const existingTimer = taskTimers[task._id];
-
-      // CHANGE THIS: Check if task is truly active (not on break)
       if (task.status === TaskStatus.IN_PROGRESS && currentAttendance?.Employeestatus !== "on break") {
         setActiveTaskId(task._id);
+
+        // Calculate time elapsed since last update
+        const lastUpdateTime = new Date(task.updatedAt || task.startTime || task.createdAt).getTime();
+        const currentTime = Date.now();
+        const timeElapsedWhileClosed = Math.floor((currentTime - lastUpdateTime) / 1000);
+        const totalDurationWithClosedTime = (task.duration || 0) + timeElapsedWhileClosed;
+
         initialTimers[task._id] = {
-          startTime: new Date(task.startTime).getTime(),
+          startTime: Date.now(), // Start fresh from now
           isRunning: true,
-          totalDuration: existingTimer?.totalDuration || task.duration || 0,
-          previousDuration: existingTimer?.previousDuration || task.duration || 0,
+          totalDuration: totalDurationWithClosedTime, // Include time when page was closed
+          previousDuration: totalDurationWithClosedTime,
         };
       } else {
-        // Task is either not in progress OR employee is on break
         initialTimers[task._id] = {
           startTime: null,
           isRunning: false,
@@ -110,14 +123,53 @@ const TaskAttendanceManagement = ({
           previousDuration: task.duration || 0,
         };
 
-        // If employee is on break and this task was in progress, don't set it as active
         if (currentAttendance?.Employeestatus === "on break") {
           setActiveTaskId(null);
         }
       }
     });
     setTaskTimers(initialTimers);
-  }, [tasks, currentAttendance?.Employeestatus]); // ADD currentAttendance dependency
+  }, [tasks, currentAttendance?.Employeestatus]);
+
+  useEffect(() => {
+    if (!clockInData?._id) return;
+
+    const saveInterval = setInterval(async () => {
+      const runningTaskId = activeTaskId;
+      if (runningTaskId) {
+        setTaskTimers((currentTimers) => {
+          const timer = currentTimers[runningTaskId];
+
+          if (timer?.isRunning) {
+            const now = Date.now();
+            const elapsed = Math.floor((now - timer.startTime) / 1000);
+            const currentDuration = elapsed + (timer.previousDuration || 0);
+
+            const currentTask = tasks.find(t => t._id === runningTaskId);
+
+            dispatch(
+              updateTaskAsync({
+                id: runningTaskId,
+                taskData: {
+                  duration: currentDuration,
+                  description: currentTask?.description || '',
+                },
+              })
+            ).then(() => {
+              console.log(`✅ Auto-saved: ${currentDuration}s for task ${runningTaskId}`);
+            }).catch((error) => {
+              console.error("Auto-save failed:", error);
+            });
+          }
+
+          return currentTimers;
+        });
+      }
+    }, 30000);
+
+    return () => clearInterval(saveInterval);
+  }, [activeTaskId, dispatch, clockInData, tasks]);
+
 
   useEffect(() => {
     if (currentAttendance?.Employeestatus === "on break") {
@@ -363,8 +415,11 @@ const TaskAttendanceManagement = ({
       if (Array.isArray(previousResponse)) {
         const filteredPreviousTasks = previousResponse.filter((task) => {
           if (!task?.createdAt) return false;
-          const taskDate = new Date(task.createdAt).toISOString().split("T")[0];
-          return taskDate !== today;
+          const taskDate = new Date(task.assignedDate || task.createdAt)
+            .toISOString()
+            .split("T")[0];
+
+          return taskDate !== today && task.status === TaskStatus.PENDING;
         });
         dispatch(setPreviousTasks(filteredPreviousTasks));
       }
@@ -424,10 +479,8 @@ const TaskAttendanceManagement = ({
             [taskId]: {
               startTime: Date.now(),
               isRunning: true,
-              totalDuration:
-                action === "restart" ? 0 : prev[taskId]?.previousDuration || 0,
-              previousDuration:
-                action === "restart" ? 0 : prev[taskId]?.previousDuration || 0,
+              totalDuration: action === "restart" ? 0 : (currentTask.duration || 0),
+              previousDuration: action === "restart" ? 0 : (currentTask.duration || 0),
             },
           }));
           break;
@@ -435,12 +488,14 @@ const TaskAttendanceManagement = ({
         case "pause":
           newStatus = TaskStatus.PAUSED;
           setActiveTaskId(null);
+          const pauseDuration = taskTimers[taskId]?.totalDuration || currentTask.duration || 0;
           setTaskTimers((prev) => ({
             ...prev,
             [taskId]: {
               ...prev[taskId],
               isRunning: false,
-              previousDuration: prev[taskId].totalDuration,
+              previousDuration: pauseDuration,
+              totalDuration: pauseDuration,
             },
           }));
           break;
@@ -465,11 +520,20 @@ const TaskAttendanceManagement = ({
       const isFromPendingTasks = previousTasks.some(t => t._id === taskId);
 
       // Prepare task data
+      let currentDuration;
+      if (action === "restart") {
+        currentDuration = 0;
+      } else if (action === "pause" || action === "complete") {
+        currentDuration = taskTimers[taskId]?.totalDuration || currentTask.duration || 0;
+      } else {
+        currentDuration = taskTimers[taskId]?.totalDuration || 0;
+      }
+
       const taskData = {
         status: newStatus,
         attendanceId: clockInData._id,
         currentTime,
-        duration: action === "restart" ? 0 : taskTimers[taskId]?.totalDuration || 0,
+        duration: currentDuration,
       };
 
       // FIXED: Only update assignedDate if task is truly from pending and being moved to today
@@ -484,12 +548,25 @@ const TaskAttendanceManagement = ({
         }
       }
 
+      // Update status first
       const response = await dispatch(
         updateTaskStatusAsync({
           id: taskId,
           taskData,
         })
       ).unwrap();
+
+      if (action === "pause" || action === "complete") {
+        await dispatch(
+          updateTaskAsync({
+            id: taskId,
+            taskData: {
+              duration: currentDuration,
+              description: currentTask.description,
+            },
+          })
+        ).unwrap();
+      }
 
       // IMPROVED: Better handling of task movement between pending and current
       if ((action === "start" || action === "restart") && isFromPendingTasks) {

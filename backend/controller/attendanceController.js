@@ -57,7 +57,7 @@ export const fetchClockDataMonthly = async (req, res) => {
       return res.status(400).json({ error: "Invalid month format. Use YYYY-MM" });
     }
 
-    
+
     let filter = {};
 
     // Filter by month
@@ -66,7 +66,7 @@ export const fetchClockDataMonthly = async (req, res) => {
     filter.date = { $gte: start, $lt: end };
 
     const attendanceRecords = await Attendance.find(filter)
-      .populate("employeeId", "name email organizationId" ) 
+      .populate("employeeId", "name email organizationId")
 
     if (!attendanceRecords.length) {
       return res.status(404).json({ message: "No attendance records found" });
@@ -2469,3 +2469,122 @@ export const calculateMonthlySalaries = async (req, res) => {
   }
 };
 
+// console.log("⏳ Attendance Cron Started");
+
+// // Dates missing attendance
+// const missingDates = [
+//   "2025-10-02",
+//   "2025-10-03",
+//   "2025-10-20",
+//   "2025-10-21",
+//   "2025-10-27"
+// ];
+
+// // Template copied from your sample attendance
+// const generateAttendanceData = (emp, dateStr) => ({
+//   employeeId: emp._id,
+//   date: new Date(dateStr),
+//   clockInTime: `${dateStr}T09:30:25.398`,
+//   clockOutTime: `${dateStr}T18:32:21.561`,
+//   clockInSelfie: null,
+//   platform: "Web",
+//   clockOutSelfie: null,
+//   autoClockOut: false,
+//   workingDay: 1,
+//   breakTime: 30,
+//   organizationId: emp.organizationId,     // 🔥 ALWAYS UPDATED
+//   activeTaskIdBeforeBreak: null,
+//   Employeestatus: "clocked out",
+//   breakTimings: [
+//     {
+//       name: "Lunch Break",
+//       startTime: `${dateStr}T13:49:16.688`,
+//       endTime: `${dateStr}T14:19:28.309`,
+//     }
+//   ],
+//   isEmergency: false
+// });
+
+// // Run every minute
+// cron.schedule("* * * * *", async () => {
+//   console.log("🔁 Checking and fixing missing attendance...");
+
+//   try {
+//     const employees = await Employee.find({}, "_id organizationId");
+
+//     for (const emp of employees) {
+//       for (const dateStr of missingDates) {
+//         const dateObj = new Date(dateStr);
+
+//         const record = await Attendance.findOne({
+//           employeeId: emp._id,
+//           date: dateObj
+//         });
+
+//         const fullData = generateAttendanceData(emp, dateStr);
+
+//         if (!record) {
+//           // CREATE new full record
+//           console.log(`➕ Creating new attendance for ${emp._id} on ${dateStr}`);
+//           await Attendance.create(fullData);
+//         } else {
+//           // UPDATE existing record (only orgId or missing fields)
+//           console.log(`♻ Updating existing attendance for ${emp._id} on ${dateStr}`);
+//           await Attendance.updateOne(
+//             { _id: record._id },
+//             { $set: fullData }
+//           );
+//         }
+//       }
+//     }
+
+//     console.log("✔ Attendance fixing completed");
+
+//   } catch (err) {
+//     console.error("❌ Cron error:", err.message);
+//   }
+// });
+
+
+// let hasRun = false; // run once only (runtime)
+
+// cron.schedule("* * * * *", async () => {
+//   if (hasRun) return;
+
+//   try {
+//     console.log("Running attendance UPDATE cron");
+
+//     const targetDate = new Date("2026-01-02T00:00:00.000Z");
+
+//     // Get active employees
+//     const employees = await Employee.find({ status: "1" }).select("_id");
+//     const employeeIds = employees.map(e => e._id);
+
+//     if (!employeeIds.length) {
+//       hasRun = true;
+//       return;
+//     }
+
+//     // 🔥 UPDATE EXISTING RECORDS ONLY
+//     const result = await Attendance.updateMany(
+//       {
+//         employeeId: { $in: employeeIds },
+//         date: targetDate
+//       },
+//       {
+//         $set: {
+//           clockInTime: "2026-01-02T09:30:00.000",
+//           clockOutTime: "2026-01-02T18:30:00.000",
+//           workingDay: 1,
+//           Employeestatus: "clocked out"
+//         }
+//       }
+//     );
+
+//     console.log(`Attendance updated: ${result.modifiedCount}`);
+
+//     hasRun = true; // ✅ ensure one-time execution
+//   } catch (error) {
+//     console.error("Attendance update cron error:", error);
+//   }
+// });

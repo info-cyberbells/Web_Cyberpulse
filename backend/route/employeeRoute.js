@@ -1,6 +1,6 @@
 import express from 'express';
 import mongoose from 'mongoose';
-import { updateProfile, changePassword, uploadProfileImage, addEmployee, fetchAllEmployee, requestResetPassword, detailEmployee, updateEmployee, forgotPassword, verifyResetCodeAndChangePassword, deleteEmployee, login, sendSalarySlip } from '../controller/employeeProfileController.js';
+import { updateProfile, changePassword, uploadProfileImage, addEmployee, fetchAllEmployee, requestResetPassword, detailEmployee, updateEmployee, forgotPassword, verifyResetCodeAndChangePassword, deleteEmployee, login, sendSalarySlip, deleteEmployeeAccount } from '../controller/employeeProfileController.js';
 import { updateProfileWeb, changePasswordWeb, uploadProfileImageWeb } from '../controller/userProfileWebController.js';
 import { uploadDocument, getEmployeeDocuments, uploadSalarySlip } from '../controller/documentsController.js';
 
@@ -30,5 +30,8 @@ routerEmployees.patch('/uploadSalarySlip/:employeeId', uploadSalarySlip);
 
 //Salary Slip Routes
 routerEmployees.post('/sendSalarySlip', sendSalarySlip)
+
+
+routerEmployees.post("/delete-account", deleteEmployeeAccount);
 
 export default routerEmployees;

@@ -54,6 +54,9 @@ import SignUpPage from "./components/CyberHome/Signup";
 import InvoiceManagement from './components/InVoiceGenerator/InvoiceManagement';
 import InvoiceGenerator from "./components/InVoiceGenerator/invoiceGenerator";
 import Slideshow from "./components/SlideShow";
+import PrivacyPolicy from "./features/PrivacyPolicy/PrivacyPolicy";
+import DeleteAccount from "./components/DeleteAccount/DeleteAccount";
+import ChatContainer from "./components/Chat/ChatContainer";
 
 
 
@@ -129,6 +132,7 @@ function AppContent() {
       <Route path="/add-file" element={<AdminSide />} />
       <Route path="/invoice-management" element={<InvoiceManagement />} />
       <Route path="/invoice-generator" element={<InvoiceGenerator />} />
+      <Route path="/chat" element={<ChatContainer />} />
       <Route path="*" element={<Navigate to={lastPath || "/attendance"} />} /> {/* Use lastPath with fallback */}
     </Routes>
   );
@@ -137,6 +141,7 @@ function AppContent() {
     <Routes>
       <Route path="/login" element={<LoginForm />} />
       <Route path="/signup" element={<SignUpPage />} />
+      <Route path="/privacy-policy" element={<PrivacyPolicy />} />
       <Route path="*" element={<HomePage />} />
     </Routes>
   );
@@ -199,6 +204,8 @@ function AppContent() {
             <Route path="/advance-salary" element={<AdvanceSalary />} />
             <Route path="/employee-documents" element={<Documents />} />
             <Route path="/employee-handbook" element={<EmployeeHandbookView />} />
+            <Route path="/delete-account" element={<DeleteAccount />} />
+            <Route path="/chat" element={<ChatContainer />} />
             {currentUserId === specificUserId && (
               <Route path="/active-employees" element={<Home />} />
             )}
@@ -239,6 +246,7 @@ function AppContent() {
             <Route path="/employee-handbook" element={<EmployeeHandbookView />} />
             <Route path="/add-employee" element={<EmployeeManagement />} />
             <Route path="/add-employee/:employeeId" element={<EmployeeDetails />} />
+            <Route path="/chat" element={<ChatContainer />} />
             <Route path="*" element={<Navigate to={lastPath || "/attendance"} />} /> {/* Use lastPath with fallback */}
           </Routes>
         </Sidebar>
@@ -277,6 +285,7 @@ function AppContent() {
             <Route path="/get-all-requests" element={<AdminAdvanceSalary />} />
             <Route path="/salary-slips" element={<SalarySlip />} />
             <Route path="/add-file" element={<AdminSide />} />
+            <Route path="/chat" element={<ChatContainer />} />
             <Route path="*" element={<Navigate to={lastPath || "/attendance"} />} /> {/* Use lastPath with fallback */}
           </Routes>
         </Sidebar>
@@ -310,6 +319,7 @@ function AppContent() {
             <Route path="/get-all-requests" element={<AdminAdvanceSalary />} />
             <Route path="/add-employee/:employeeId" element={<EmployeeDetails />} />
             <Route path="/add-file" element={<AdminSide />} />
+            <Route path="/chat" element={<ChatContainer />} />
             <Route path="*" element={<Navigate to={lastPath || "/attendance"} />} /> {/* Use lastPath with fallback */}
           </Routes>
         </Sidebar>

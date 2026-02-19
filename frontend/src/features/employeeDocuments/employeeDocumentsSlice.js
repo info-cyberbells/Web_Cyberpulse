@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { getEmployeeDocuments, uploadEmployeeDocument } from '../../services/services';
+import { getEmployeeDocuments, uploadEmployeeDocument, deleteMyAccount } from '../../services/services';
 
 // Async thunk for fetching employee documents
 export const fetchEmployeeDocuments = createAsyncThunk(
@@ -22,10 +22,32 @@ export const uploadDocument = createAsyncThunk(
       const response = await uploadEmployeeDocument(employeeId, formData);
       return { ...response, docType };
     } catch (error) {
-      return rejectWithValue({ 
+      return rejectWithValue({
         error: error.response?.data?.message || 'Upload failed',
-        docType 
+        docType
       });
+    }
+  }
+);
+
+
+export const deleteEmployeeAccountThunk = createAsyncThunk(
+  "employee/deleteAccount",
+  async (_, { rejectWithValue }) => {
+    try {
+      const storedUser = JSON.parse(localStorage.getItem("user"));
+      const employeeId = storedUser?.employee?.id;
+
+      if (!employeeId) {
+        throw new Error("Employee ID not found");
+      }
+
+      const response = await deleteMyAccount(employeeId);
+      return response;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || error.message
+      );
     }
   }
 );
@@ -37,6 +59,8 @@ const employeeDocumentsSlice = createSlice({
     loading: false,
     error: null,
     uploadStatus: {}, // Track upload status for each document type
+    deleteLoading: false,
+    deleteError: null,
   },
   reducers: {
     clearError: (state) => {
@@ -73,11 +97,11 @@ const employeeDocumentsSlice = createSlice({
       })
       .addCase(uploadDocument.fulfilled, (state, action) => {
         const { docType } = action.payload;
-        state.uploadStatus[docType] = { 
-          uploading: false, 
-          success: true, 
+        state.uploadStatus[docType] = {
+          uploading: false,
+          success: true,
           error: null,
-          documentUrl: action.payload.document?.documentUrl 
+          documentUrl: action.payload.document?.documentUrl
         };
         // Optionally update the documents array
         const existingDocIndex = state.documents.findIndex(doc => doc.documentType === docType);
@@ -90,6 +114,18 @@ const employeeDocumentsSlice = createSlice({
       .addCase(uploadDocument.rejected, (state, action) => {
         const { docType, error } = action.payload;
         state.uploadStatus[docType] = { uploading: false, success: false, error };
+      })
+
+      .addCase(deleteEmployeeAccountThunk.pending, (state) => {
+        state.deleteLoading = true;
+        state.deleteError = null;
+      })
+      .addCase(deleteEmployeeAccountThunk.fulfilled, (state) => {
+        state.deleteLoading = false;
+      })
+      .addCase(deleteEmployeeAccountThunk.rejected, (state, action) => {
+        state.deleteLoading = false;
+        state.deleteError = action.payload;
       });
   }
 });

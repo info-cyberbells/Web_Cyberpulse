@@ -22,6 +22,8 @@ const AttendanceSchema = new mongoose.Schema({
       name: { type: String, required: true, trim: true },
       startTime: { type: String, required: true },
       endTime: { type: String },
+      pausedAt: { type: String, default: null },
+      pausedDuration: { type: Number, default: 0 },
     },
   ],
   organizationId: {

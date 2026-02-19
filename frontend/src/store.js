@@ -20,6 +20,7 @@ import employeeDocumentsReducer from './features/employeeDocuments/employeeDocum
 import salarySlipReducer from './features/salarySlip/salarySlipSlice';
 import employeeRatingReducer from './features/employeeRating/employeeRatingSlice';
 import invoiceReducer from "./features/invoice/invoiceSlice";
+import chatReducer from "./features/chat/chatSlice";
 import { RESET_APP_STATE } from './features/auth/authSlice';
 
 
@@ -45,6 +46,7 @@ const appReducer = combineReducers({
   salarySlip: salarySlipReducer,
   employeeRatings: employeeRatingReducer,
   invoice: invoiceReducer,
+  chat: chatReducer,
 });
 
 

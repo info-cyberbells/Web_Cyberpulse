@@ -275,7 +275,7 @@ const AddRatingModal = ({ open, onClose, employee, editingRating = null }) => {
                             <Select
                                 value={formData.month}
                                 label="Selected Month"
-                                disabled
+                                onChange={(e) => handleInputChange('month', e.target.value)}
                                 sx={{
                                     '& .MuiInputBase-input.Mui-disabled': {
                                         WebkitTextFillColor: '#666',

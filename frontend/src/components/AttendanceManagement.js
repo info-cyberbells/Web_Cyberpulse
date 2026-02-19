@@ -54,6 +54,7 @@ import {
   useTheme,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import PlayIcon from "@mui/icons-material/PlayArrow";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import {
@@ -105,6 +106,8 @@ const AttendanceManagement = () => {
   const [breakHistoryExpanded, setBreakHistoryExpanded] = useState(false);
   const [activeTaskIdBeforeBreak, setActiveTaskIdBeforeBreak] = useState(null);
   const [isBreakLoading, setIsBreakLoading] = useState(false);
+  const [isBreakPaused, setIsBreakPaused] = useState(false);
+  const [pausedBreakTime, setPausedBreakTime] = useState(0);
 
   const getCurrentISOTime = () => {
     const now = new Date();
@@ -405,23 +408,48 @@ const AttendanceManagement = () => {
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-      // CHANGE THIS LINE: Remove the break status condition
+
+      // Working time calculation
       if (clockInData?.timestamp && !clockOutData) {
         updateElapsedTime(clockInData.timestamp);
       }
-      // Rest of the break timer logic stays the same
+
+      // Break timer logic with pause support
       if (currentAttendance?.Employeestatus === "on break" && currentAttendance?.breakTimings?.length > 0) {
         const latestBreak = currentAttendance.breakTimings[currentAttendance.breakTimings.length - 1];
+
         if (latestBreak && !latestBreak.endTime) {
-          const elapsed = Math.floor((new Date() - new Date(latestBreak.startTime)) / 1000);
-          setBreakTimer(elapsed);
+          if (latestBreak.pausedAt) {
+            // Break is PAUSED - calculate time UNTIL pause and freeze there
+            const timeUntilPause = Math.floor(
+              (new Date(latestBreak.pausedAt) - new Date(latestBreak.startTime)) / 1000
+            );
+            const pausedDuration = latestBreak.pausedDuration || 0;
+            const frozenTime = timeUntilPause - pausedDuration;
+
+            setBreakTimer(frozenTime);
+            setIsBreakPaused(true);
+          } else {
+            // Break is ACTIVE - calculate elapsed time minus paused duration
+            const totalElapsed = Math.floor(
+              (new Date() - new Date(latestBreak.startTime)) / 1000
+            );
+            const pausedDuration = latestBreak.pausedDuration || 0;
+            const activeTime = totalElapsed - pausedDuration;
+
+            setBreakTimer(activeTime);
+            setIsBreakPaused(false);
+          }
         } else {
           setBreakTimer(0);
+          setIsBreakPaused(false);
         }
       } else {
         setBreakTimer(0);
+        setIsBreakPaused(false);
       }
     }, 1000);
+
     return () => clearInterval(timer);
   }, [clockInData, clockOutData, currentAttendance]);
 
@@ -449,17 +477,25 @@ const AttendanceManagement = () => {
 
     // Calculate total break time with stable rounding
     const totalBreakSeconds = currentAttendance?.breakTimings?.reduce((acc, b) => {
+      const paused = b.pausedDuration || 0;
+
       if (b.startTime && b.endTime) {
-        // Completed break
-        return acc + Math.floor((new Date(b.endTime) - new Date(b.startTime)) / 1000);
-      } else if (b.startTime && !b.endTime) {
-        // Ongoing break - use seconds since start, rounded down consistently
-        const breakStart = new Date(b.startTime);
-        const breakDuration = Math.floor((now.getTime() - breakStart.getTime()) / 1000);
-        return acc + breakDuration;
+        const total = Math.floor(
+          (new Date(b.endTime) - new Date(b.startTime)) / 1000
+        );
+        return acc + Math.max(0, total - paused);
       }
+
+      if (b.startTime && !b.endTime) {
+        const total = Math.floor(
+          (now.getTime() - new Date(b.startTime)) / 1000
+        );
+        return acc + Math.max(0, total - paused);
+      }
+
       return acc;
     }, 0) || 0;
+
 
     // Calculate working time (total - breaks)
     const totalSeconds = Math.floor((now.getTime() - start.getTime()) / 1000);
@@ -969,6 +1005,138 @@ const AttendanceManagement = () => {
       toast.error("Failed to end break");
     }
   };
+
+  const handlePauseBreak = async () => {
+    if (currentAttendance?.Employeestatus !== "on break") {
+      toast.dismiss();
+      toast.error('No active break to pause');
+      return;
+    }
+
+    try {
+      const now = getCurrentISOTime();
+      const latestBreak = currentAttendance.breakTimings[currentAttendance.breakTimings.length - 1];
+
+      if (!latestBreak || latestBreak.endTime) {
+        toast.dismiss();
+        toast.error('No active break to pause');
+        return;
+      }
+
+      if (latestBreak.pausedAt) {
+        toast.dismiss();
+        toast.warning('Break is already paused');
+        return;
+      }
+
+      // Update break timings with pause timestamp
+      const updatedBreakTimings = currentAttendance.breakTimings.map((b, index) =>
+        index === currentAttendance.breakTimings.length - 1
+          ? {
+            ...b,
+            pausedAt: now,
+            pausedDuration: b.pausedDuration || 0
+          }
+          : b
+      );
+
+      console.log('Pausing break - sending to backend:', {
+        breakTimings: updatedBreakTimings
+      });
+
+      // Update database
+      await dispatch(updateAttendanceAsync({
+        id: clockInData._id,
+        data: {
+          breakTimings: updatedBreakTimings,
+        },
+      })).unwrap();
+
+      // Refresh attendance data
+      const userId = getUserId();
+      if (userId) {
+        await dispatch(getAttendance({ id: userId, date: currentDate }));
+      }
+
+      // Update local state
+      setIsBreakPaused(true);
+      setPausedBreakTime(breakTimer);
+
+      toast.dismiss();
+      toast.success("Break paused");
+    } catch (error) {
+      console.error("Error pausing break:", error);
+      toast.dismiss();
+      toast.error("Failed to pause break");
+    }
+  };
+
+  const handleResumeBreak = async () => {
+    if (currentAttendance?.Employeestatus !== "on break") {
+      toast.dismiss();
+      toast.error('No active break to resume');
+      return;
+    }
+
+    try {
+      const now = getCurrentISOTime();
+      const latestBreak = currentAttendance.breakTimings[currentAttendance.breakTimings.length - 1];
+
+      if (!latestBreak || !latestBreak.pausedAt) {
+        toast.dismiss();
+        toast.error('Break is not paused');
+        return;
+      }
+
+      // Calculate how long the break was paused
+      const pauseDurationSeconds = Math.floor(
+        (new Date(now) - new Date(latestBreak.pausedAt)) / 1000
+      );
+
+      // Update break timings - remove pausedAt and add to pausedDuration
+      const updatedBreakTimings = currentAttendance.breakTimings.map((b, index) =>
+        index === currentAttendance.breakTimings.length - 1
+          ? {
+            ...b,
+            pausedAt: null,  // Clear pause timestamp
+            pausedDuration: (b.pausedDuration || 0) + pauseDurationSeconds
+          }
+          : b
+      );
+
+      console.log('Resuming break - sending to backend:', {
+        breakTimings: updatedBreakTimings,
+        pauseDurationAdded: pauseDurationSeconds
+      });
+
+      // Update database
+      await dispatch(updateAttendanceAsync({
+        id: clockInData._id,
+        data: {
+          breakTimings: updatedBreakTimings,
+        },
+      })).unwrap();
+
+      // Refresh attendance data
+      const userId = getUserId();
+      if (userId) {
+        await dispatch(getAttendance({ id: userId, date: currentDate }));
+      }
+
+      // Update local state
+      setIsBreakPaused(false);
+
+      toast.dismiss();
+      toast.success("Break resumed");
+    } catch (error) {
+      console.error("Error resuming break:", error);
+      toast.dismiss();
+      toast.error("Failed to resume break");
+    }
+  };
+
+
+
   // Force refresh when employee status changes from break to active
   useEffect(() => {
     if (currentAttendance?.Employeestatus === "active") {
@@ -1104,18 +1272,36 @@ const AttendanceManagement = () => {
   );
 
   const formatTotalBreakTime = () => {
-    const now = currentTime;
-
     const totalSeconds = currentAttendance?.breakTimings?.reduce((acc, b) => {
-      if (b.startTime && b.endTime) {
-        return acc + Math.floor((new Date(b.endTime) - new Date(b.startTime)) / 1000);
+      if (!b.startTime || !b.endTime) return acc;
+
+      const total = Math.floor(
+        (new Date(b.endTime) - new Date(b.startTime)) / 1000
+      );
+
+      // 1️⃣ already stored paused duration
+      let paused = b.pausedDuration || 0;
+
+      // 2️⃣ pausedAt exists but duration not saved (BUG DATA)
+      if (b.pausedAt) {
+        const pauseExtra = Math.floor(
+          (new Date(b.endTime) - new Date(b.pausedAt)) / 1000
+        );
+        paused += pauseExtra;
       }
-      return acc;
+
+      return acc + Math.max(0, total - paused);
     }, 0) || 0;
+
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+    return `${minutes.toString().padStart(2, '0')}:${seconds
+      .toString()
+      .padStart(2, '0')}`;
   };
+
+
 
   return (
     <Container maxWidth="lg" sx={{ py: 2, mt: -1 }}>
@@ -1281,15 +1467,15 @@ const AttendanceManagement = () => {
                 </Typography>
                 {currentAttendance?.Employeestatus === "on break" && currentAttendance?.breakTimings?.length > 0 ? (
                   <Box sx={{ textAlign: 'center' }}>
-                    <Typography variant="h4" fontWeight={700} color="warning.main">
+                    <Typography variant="h4" fontWeight={700} color={isBreakPaused ? "text.secondary" : "warning.main"}>
                       {Math.floor(breakTimer / 60).toString().padStart(2, '0')}:{(breakTimer % 60).toString().padStart(2, '0')}
                     </Typography>
                     <Chip
-                      color="warning"
+                      color={isBreakPaused ? "default" : "warning"}
                       size="small"
                       sx={{ mt: 1 }}
                       icon={getBreakIcon(currentAttendance.breakTimings[currentAttendance.breakTimings.length - 1].name)}
-                      label={currentAttendance.breakTimings[currentAttendance.breakTimings.length - 1].name}
+                      label={isBreakPaused ? "Break Paused" : currentAttendance.breakTimings[currentAttendance.breakTimings.length - 1].name}
                     />
                   </Box>
                 ) : (
@@ -1361,23 +1547,67 @@ const AttendanceManagement = () => {
                   Take a Break
                 </Button>
               ) : (
-                <Button
-                  variant="contained"
-                  color="success"
-                  size="large"
-                  onClick={handleBackToWork}
-                  startIcon={<WorkIcon />}
-                  sx={{
-                    px: 3,
-                    py: 1.25,
-                    borderRadius: 2,
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    boxShadow: 2
-                  }}
-                >
-                  Back to Work
-                </Button>
+                <Stack direction="row" spacing={2}>
+                  {/* Show Pause button if break is NOT paused */}
+                  {!isBreakPaused && (
+                    <Button
+                      variant="contained"
+                      color="warning"
+                      size="large"
+                      onClick={handlePauseBreak}
+                      startIcon={<PauseCircleOutlineIcon />}
+                      sx={{
+                        px: 3,
+                        py: 1.25,
+                        borderRadius: 2,
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        boxShadow: 2
+                      }}
+                    >
+                      Pause Break
+                    </Button>
+                  )}
+
+                  {/* Show Resume button if break IS paused */}
+                  {isBreakPaused && (
+                    <Button
+                      variant="contained"
+                      color="info"
+                      size="large"
+                      onClick={handleResumeBreak}
+                      startIcon={<PlayIcon />}
+                      sx={{
+                        px: 3,
+                        py: 1.25,
+                        borderRadius: 2,
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        boxShadow: 2
+                      }}
+                    >
+                      Resume Break
+                    </Button>
+                  )}
+
+                  <Button
+                    variant="contained"
+                    color="success"
+                    size="large"
+                    onClick={handleBackToWork}
+                    startIcon={<WorkIcon />}
+                    sx={{
+                      px: 3,
+                      py: 1.25,
+                      borderRadius: 2,
+                      textTransform: 'none',
+                      fontWeight: 600,
+                      boxShadow: 2
+                    }}
+                  >
+                    Back to Work
+                  </Button>
+                </Stack>
               )}
               <Button
                 variant="contained"
@@ -1479,8 +1709,14 @@ const AttendanceManagement = () => {
                 {currentAttendance.breakTimings.map((breakItem, index) => {
                   const durationSeconds =
                     breakItem.endTime
-                      ? Math.floor((new Date(breakItem.endTime) - new Date(breakItem.startTime)) / 1000)
+                      ? Math.max(
+                        0,
+                        Math.floor(
+                          (new Date(breakItem.endTime) - new Date(breakItem.startTime)) / 1000
+                        ) - (breakItem.pausedDuration || 0)
+                      )
                       : 0;
+
                   return (
                     <Grid item xs={12} sm={6} md={4} key={index}>
                       <Paper

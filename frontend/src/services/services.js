@@ -1135,11 +1135,25 @@ export const getInvoiceNumber = async () => {
 export const getAllInvoices = async () => {
   try {
     const organizationId = getOrganizationId();
-    
+
     const response = await apiClient.get(API_ROUTES.GET_ALL_INVOICES, {
       params: organizationId ? { organizationId } : {}
     });
 
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const deleteMyAccount = async (employeeId) => {
+  try {
+    const response = await apiClient.post(
+      API_ROUTES.DELETE_EMPLOYEE_ACCOUNT,
+      {
+        data: { employeeId },
+      }
+    );
     return response.data;
   } catch (error) {
     throw error;

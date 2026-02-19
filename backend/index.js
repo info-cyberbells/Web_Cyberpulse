@@ -1,5 +1,8 @@
 import express from 'express';
+import http from 'http';
 import "./cronJobs/leaveQuotaCron.js";
+import "./cronJobs/disappearingMessagesCron.js";
+import "./cronJobs/scheduledMessagesCron.js";
 import dotenv from 'dotenv';
 import cors from 'cors';
 import { connectToDB } from './db.js';
@@ -22,9 +25,9 @@ import handbookRoutes from './route/handbookRoutes.js';
 import employeeRatingRoutes from "./route/EmployeeRatingRoute.js";
 import routerOrganization from './route/registerOrganization.js';
 import invoiceRouter from './route/invoiceRoutes.js';
-
-
-
+import routerChat from './route/chatRoute.js';
+import { initializeSocketServer } from './socket/socketServer.js';
+import { apiRateLimiter } from './middleware/rateLimitMiddleware.js';
 
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -60,13 +63,15 @@ app.use("/api/handbook", handbookRoutes);
 app.use("/api/performance", employeeRatingRoutes);
 app.use("/api/admin", routerOrganization);
 app.use("/api/invoice", invoiceRouter);
-
+app.use("/api/chat", apiRateLimiter, routerChat);
 
 const PORT = process.env.PORT || 4040;
+const httpServer = http.createServer(app);
+initializeSocketServer(httpServer);
 
 connectToDB()
   .then(() => {
-    app.listen(PORT, () => {
+    httpServer.listen(PORT, () => {
       console.log(`Server started at: http://localhost:${PORT}`);
     });
   })

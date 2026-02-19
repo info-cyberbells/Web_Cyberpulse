@@ -12,6 +12,7 @@ const crypto = require("crypto");
 
 import Task from '../model/TaskModel.js';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -67,9 +68,17 @@ export const login = async (req, res) => {
     const fullUrl = req.protocol + "://" + req.get("host");
     const imagePath = employee.image ? `${fullUrl}${employee.image}` : null;
 
-    // Return employee details
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: employee._id, email: employee.email, type: employee.type },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    // Return employee details with token
     res.status(200).json({
       message: "Login successful",
+      token,
       employee: {
         id: employee._id,
         name: employee.name,
@@ -773,7 +782,7 @@ export const updateProfile = async (req, res) => {
         futureHiring: updatedEmployee.futureHiring,
         reason: updatedEmployee.reason,
         status: updatedEmployee.status,
-        lastWorkingDay : updatedEmployee.lastWorkingDay,
+        lastWorkingDay: updatedEmployee.lastWorkingDay,
         duesStatus: updatedEmployee.duesStatus,
         lastDuePayDate: updatedEmployee.lastDuePayDate,
 
@@ -1045,7 +1054,7 @@ export const sendSalarySlip = async (req, res) => {
       ]
     };
 
-    
+
     try {
       const info = await emailTransporter.sendMail(emailOptions);
       console.log('Email sent successfully:', info.messageId);
@@ -1058,6 +1067,45 @@ export const sendSalarySlip = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Failed to set up email sending: ' + error.message
+    });
+  }
+};
+
+
+
+
+
+export const deleteEmployeeAccount = async (req, res) => {
+  try {
+    const employeeId = req.body?.data?.employeeId;
+
+    if (!employeeId) {
+      return res.status(400).json({
+        success: false,
+        message: "Employee ID is required",
+      });
+    }
+
+    const employee = await Employee.findById(employeeId);
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee not found",
+      });
+    }
+
+    employee.status = "0";
+    await employee.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Account deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
     });
   }
 };

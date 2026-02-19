@@ -36,9 +36,9 @@ const styles = {
         alignItems: 'center',
         width: '100%',
         minHeight: '90vh',
-        backgroundColor: 'rgba(142, 209, 252, 0.06)',
+        backgroundColor: '#f8fafc',
         paddingBottom: '60px',
-        paddingTop: '15px', // Reduced from 40px to 15px
+        paddingTop: '15px',
     },
 
     contentBox: {
@@ -62,7 +62,7 @@ const styles = {
         fontSize: { xs: '32px', sm: '38px', md: '44px', lg: '48px' }, // Increased font sizes
         fontWeight: '700', // Increased from 600 to 700
         lineHeight: '1.2', // Tighter line height for better visual impact
-        color: '#1a202c', // Darker color for better contrast
+        color: '#1e293b', // Darker color for better contrast
         marginBottom: '16px',
         fontFamily: "'Inter', 'Segoe UI', sans-serif",
         letterSpacing: '-0.02em', // Slightly more negative letter spacing for modern look
@@ -84,20 +84,20 @@ const styles = {
         fontSize: { xs: '14px', md: '15px' },
         fontWeight: '600',
         textTransform: 'none',
-        backgroundColor: '#3b82f6',
+        backgroundColor: '#2563eb',
         border: 'none',
         padding: { xs: '12px 24px', md: '14px 28px' },
         marginBottom: '20px',
         fontFamily: "'Inter', sans-serif",
         '&:hover': {
-            backgroundColor: '#2563eb',
+            backgroundColor: '#1d4ed8',
         },
         transition: 'all 0.2s ease',
     },
 
     statText: {
         fontSize: { xs: '13px', md: '14px' },
-        color: '#94a3b8',
+        color: '#64748b',
         fontWeight: '400',
         fontFamily: "'Inter', sans-serif",
         display: 'flex',
@@ -106,7 +106,7 @@ const styles = {
         gap: '6px',
         '&::before': {
             content: '"✓"',
-            color: '#10b981',
+            color: '#2563eb',
             fontWeight: '600',
             fontSize: '14px',
         }
@@ -119,8 +119,8 @@ const styles = {
         height: 'auto',
         objectFit: 'contain',
         borderRadius: '16px',
-        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.15)',
-        border: '1px solid rgba(255, 255, 255, 0.2)',
+        boxShadow: '0 20px 60px rgba(37, 99, 235, 0.1)',
+        border: '1px solid #e2e8f0',
     },
 
     brandLogoWrap: {
@@ -132,8 +132,8 @@ const styles = {
         padding: '40px 20px',
         backgroundColor: 'white',
         width: '100%',
-        borderTop: '1px solid #f0f0f0',
-        borderBottom: '1px solid #f0f0f0',
+        borderTop: '1px solid #e2e8f0',
+        borderBottom: '1px solid #e2e8f0',
     },
     sectionWrap: {
         width: '100%',
@@ -146,7 +146,7 @@ const styles = {
     sectionTitle: {
         fontSize: '42px',
         fontWeight: '700',
-        color: '#1a1a1a',
+        color: '#1e293b',
         marginBottom: '60px',
         lineHeight: '1.3',
     },
@@ -173,7 +173,7 @@ const styles = {
         padding: '20px',
         backgroundColor: 'white',
         borderRadius: '12px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+        boxShadow: '0 2px 8px rgba(37, 99, 235, 0.08)',
         minWidth: '150px',
     },
     ratingText: {
@@ -198,7 +198,7 @@ const styles = {
     featuresHeading: {
         fontSize: '42px',
         fontWeight: '700',
-        color: '#1a1a1a',
+        color: '#1e293b',
         marginBottom: '80px',
         lineHeight: '1.3',
         textAlign: 'center',
@@ -230,7 +230,7 @@ const styles = {
     featureTitle: {
         fontSize: '36px',
         fontWeight: '700',
-        color: '#1a1a1a',
+        color: '#1e293b',
         marginBottom: '15px',
         lineHeight: '1.2',
     },
@@ -243,7 +243,7 @@ const styles = {
     featurePara: {
         fontSize: '16px',
         lineHeight: '1.6',
-        color: '#555',
+        color: '#64748b',
         marginBottom: '20px',
     },
     extraContent: {
@@ -515,7 +515,7 @@ Other platforms like MyHours, Clockify, and Paymo offer free plans, but none mat
                     </Box>
                     {/* Testimonials Section */}
                     <Box sx={{ marginTop: '10px', textAlign: 'center' }}>
-                        <Typography sx={{ fontSize: '35px', fontWeight: '700', marginBottom: '40px' }}>
+                        <Typography sx={{ fontSize: '35px', fontWeight: '700', marginBottom: '40px', color: '#1e293b' }}>
                             Join thousands who trust CyberPulse for effortless time management
                         </Typography>
 
@@ -561,7 +561,7 @@ Other platforms like MyHours, Clockify, and Paymo offer free plans, but none mat
 
                     {/* FAQ Section */}
                     <Box sx={{ marginTop: '100px', textAlign: 'center' }}>
-                        <Typography sx={{ fontSize: '35px', fontWeight: '600', marginBottom: '20px' }}>
+                        <Typography sx={{ fontSize: '35px', fontWeight: '700', marginBottom: '20px', color: '#1e293b' }}>
                             FAQs
                         </Typography>
                         <Typography sx={{ marginBottom: '40px' }}>

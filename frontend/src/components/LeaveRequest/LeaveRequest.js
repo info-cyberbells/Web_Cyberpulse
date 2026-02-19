@@ -63,17 +63,36 @@ const LeaveRequests = () => {
     action: null,
   });
   const [expandedCards, setExpandedCards] = useState(new Set());
+  const [selectedEmployee, setSelectedEmployee] = useState("all");
 
   useEffect(() => {
     dispatch(fetchLeaveList());
   }, [dispatch]);
 
 
-  const filteredLeaves = leaveList.filter((leave) =>
-    filterStatus === "all"
+  const filteredLeaves = leaveList.filter((leave) => {
+    const statusMatch = filterStatus === "all"
       ? true
-      : leave.status.toLowerCase() === filterStatus.toLowerCase()
-  );
+      : leave.status.toLowerCase() === filterStatus.toLowerCase();
+
+    const employeeMatch = selectedEmployee === "all"
+      ? true
+      : leave.employeeId?._id === selectedEmployee;
+
+    return statusMatch && employeeMatch;
+  });
+
+
+  const uniqueEmployees = leaveList.reduce((acc, leave) => {
+    if (leave.employeeId && !acc.find(emp => emp._id === leave.employeeId._id)) {
+      acc.push({
+        _id: leave.employeeId._id,
+        name: leave.employeeId.name
+      });
+    }
+    return acc;
+  }, []);
+
   useEffect(() => {
     if (error || successMessage) {
       const timer = setTimeout(() => {
@@ -309,30 +328,174 @@ const LeaveRequests = () => {
           <Paper
             elevation={0}
             sx={{
-              p: 1.5,
+              p: 2,
               bgcolor: "grey.50",
               border: '1px solid',
               borderColor: 'grey.200',
               borderRadius: 2
             }}
           >
-            <Stack direction="row" spacing={2} alignItems="center">
-              <FilterList fontSize="small" color="action" />
-              <Select
-                size="small"
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
+            <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+
+              {/* Employee Filter */}
+              <Paper
+                elevation={0}
                 sx={{
-                  minWidth: 160,
-                  "& .MuiOutlinedInput-notchedOutline": { border: "none" },
-                  fontWeight: 500
+                  border: '1px solid',
+                  borderColor: 'grey.300',
+                  borderRadius: 1.5,
+                  overflow: 'hidden',
+                  bgcolor: 'white'
                 }}
               >
-                <MenuItem value="all">All Requests</MenuItem>
-                <MenuItem value="Pending">Pending Only</MenuItem>
-                <MenuItem value="Approved">Approved Only</MenuItem>
-                <MenuItem value="Rejected">Rejected Only</MenuItem>
-              </Select>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ px: 1.5 }}>
+                  <Select
+                    size="small"
+                    value={selectedEmployee}
+                    onChange={(e) => setSelectedEmployee(e.target.value)}
+                    displayEmpty
+                    sx={{
+                      minWidth: 200,
+                      "& .MuiOutlinedInput-notchedOutline": { border: "none" },
+                      fontWeight: 500,
+                      fontSize: '0.875rem',
+                      '& .MuiSelect-select': {
+                        py: 1
+                      }
+                    }}
+                  >
+                    <MenuItem value="all">
+                      <Typography variant="body2" fontWeight="500">
+                        All Employees
+                      </Typography>
+                    </MenuItem>
+                    <Divider sx={{ my: 0.5 }} />
+                    {uniqueEmployees.map((employee) => (
+                      <MenuItem key={employee._id} value={employee._id}>
+                        <Stack direction="row" alignItems="center" spacing={1}>
+                          <Avatar
+                            sx={{
+                              width: 24,
+                              height: 24,
+                              fontSize: '0.7rem',
+                              bgcolor: 'primary.light'
+                            }}
+                          >
+                            {employee.name.charAt(0).toUpperCase()}
+                          </Avatar>
+                          <Typography variant="body2">
+                            {employee.name}
+                          </Typography>
+                        </Stack>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </Stack>
+              </Paper>
+
+              {/* Status Filter */}
+              <Paper
+                elevation={0}
+                sx={{
+                  border: '1px solid',
+                  borderColor: 'grey.300',
+                  borderRadius: 1.5,
+                  overflow: 'hidden',
+                  bgcolor: 'white'
+                }}
+              >
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ px: 1.5 }}>
+                  <Schedule fontSize="small" sx={{ color: 'primary.main' }} />
+                  <Select
+                    size="small"
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    sx={{
+                      minWidth: 180,
+                      "& .MuiOutlinedInput-notchedOutline": { border: "none" },
+                      fontWeight: 500,
+                      fontSize: '0.875rem',
+                      '& .MuiSelect-select': {
+                        py: 1
+                      }
+                    }}
+                  >
+                    <MenuItem value="all">
+                      <Typography variant="body2" fontWeight="500">
+                        All Status
+                      </Typography>
+                    </MenuItem>
+                    <Divider sx={{ my: 0.5 }} />
+                    <MenuItem value="Pending">
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <Box
+                          sx={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: '50%',
+                            bgcolor: 'warning.main'
+                          }}
+                        />
+                        <Typography variant="body2">Pending</Typography>
+                      </Stack>
+                    </MenuItem>
+                    <MenuItem value="Approved">
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <Box
+                          sx={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: '50%',
+                            bgcolor: 'success.main'
+                          }}
+                        />
+                        <Typography variant="body2">Approved</Typography>
+                      </Stack>
+                    </MenuItem>
+                    <MenuItem value="Rejected">
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <Box
+                          sx={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: '50%',
+                            bgcolor: 'error.main'
+                          }}
+                        />
+                        <Typography variant="body2">Rejected</Typography>
+                      </Stack>
+                    </MenuItem>
+                  </Select>
+                </Stack>
+              </Paper>
+
+              {/* Clear Filters Button */}
+              {(selectedEmployee !== "all" || filterStatus !== "all") && (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => {
+                    setSelectedEmployee("all");
+                    setFilterStatus("all");
+                  }}
+                  startIcon={<Close fontSize="small" />}
+                  sx={{
+                    textTransform: 'none',
+                    borderRadius: 1.5,
+                    borderColor: 'grey.300',
+                    color: 'text.secondary',
+                    fontWeight: 500,
+                    fontSize: '0.875rem',
+                    '&:hover': {
+                      borderColor: 'error.main',
+                      color: 'error.main',
+                      bgcolor: 'error.50'
+                    }
+                  }}
+                >
+                  Clear
+                </Button>
+              )}
             </Stack>
           </Paper>
         </Stack>

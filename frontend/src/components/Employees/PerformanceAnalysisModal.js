@@ -201,17 +201,13 @@ const PerformanceAnalysisPage = () => {
 
     // Prepare chart data
     const chartData = ratings
-        ? [...ratings]
-            .sort((a, b) => {
-                return a.month.localeCompare(b.month);
-            })
-            .map(rating => ({
-                month: getMonthName(rating.month),
-                fullMonth: getFullMonthName(rating.month),
-                manualRating: Number(rating.rating.toFixed(1)),
-                attendanceRating: Number(rating.SystemRating.toFixed(1)),
-                avgRating: Number(((rating.rating + rating.SystemRating) / 2).toFixed(1))
-            }))
+        ? ratings.map(rating => ({
+            month: getMonthName(rating.month),
+            fullMonth: getFullMonthName(rating.month),
+            manualRating: Number(rating.rating.toFixed(1)),
+            attendanceRating: Number(rating.SystemRating.toFixed(1)),
+            avgRating: Number(((rating.rating + rating.SystemRating) / 2).toFixed(1))
+        }))
         : [];
 
     // Calculate overall stats
@@ -355,49 +351,51 @@ const PerformanceAnalysisPage = () => {
                                         )}
                                     </Box>
                                     {window.location.pathname !== '/my-performance' && (
-                                        <Tooltip title={
-                                            (ratings && ratings.length > 0 && ratings.some(rating => {
-                                                const currentDate = new Date();
-                                                const previousMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
-                                                const previousMonthValue = `${previousMonth.getFullYear()}-${String(previousMonth.getMonth() + 1).padStart(2, '0')}`;
-                                                return rating.month === previousMonthValue;
-                                            })) ? "Rating already given for previous month" : "Add New Rating"
-                                        }>
+                                        <Tooltip
+                                            title={
+                                                // (ratings && ratings.length > 0 && ratings.some(rating => {
+                                                //     const currentDate = new Date();
+                                                //     const previousMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+                                                //     const previousMonthValue = `${previousMonth.getFullYear()}-${String(previousMonth.getMonth() + 1).padStart(2, '0')}`;
+                                                //     return rating.month === previousMonthValue;
+                                                // })) 
+                                                "Add New Rating"
+                                            }>
                                             <span>
                                                 <Fab
                                                     size="medium"
                                                     color="primary"
                                                     onClick={handleOpenAddRating}
-                                                    disabled={
-                                                        ratings && ratings.length > 0 && ratings.some(rating => {
-                                                            const currentDate = new Date();
-                                                            const previousMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
-                                                            const previousMonthValue = `${previousMonth.getFullYear()}-${String(previousMonth.getMonth() + 1).padStart(2, '0')}`;
-                                                            return rating.month === previousMonthValue;
-                                                        })
-                                                    }
-                                                    sx={{
-                                                        boxShadow: (ratings && ratings.length > 0 && ratings.some(rating => {
-                                                            const currentDate = new Date();
-                                                            const previousMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
-                                                            const previousMonthValue = `${previousMonth.getFullYear()}-${String(previousMonth.getMonth() + 1).padStart(2, '0')}`;
-                                                            return rating.month === previousMonthValue;
-                                                        })) ? 'none' : '0 4px 12px rgba(25,118,210,0.3)',
-                                                        '&:hover': {
-                                                            transform: (ratings && ratings.length > 0 && ratings.some(rating => {
-                                                                const currentDate = new Date();
-                                                                const previousMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
-                                                                const previousMonthValue = `${previousMonth.getFullYear()}-${String(previousMonth.getMonth() + 1).padStart(2, '0')}`;
-                                                                return rating.month === previousMonthValue;
-                                                            })) ? 'none' : 'scale(1.05)'
-                                                        },
-                                                        opacity: (ratings && ratings.length > 0 && ratings.some(rating => {
-                                                            const currentDate = new Date();
-                                                            const previousMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
-                                                            const previousMonthValue = `${previousMonth.getFullYear()}-${String(previousMonth.getMonth() + 1).padStart(2, '0')}`;
-                                                            return rating.month === previousMonthValue;
-                                                        })) ? 0.6 : 1
-                                                    }}
+                                                // disabled={
+                                                //     ratings && ratings.length > 0 && ratings.some(rating => {
+                                                //         const currentDate = new Date();
+                                                //         const previousMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+                                                //         const previousMonthValue = `${previousMonth.getFullYear()}-${String(previousMonth.getMonth() + 1).padStart(2, '0')}`;
+                                                //         return rating.month === previousMonthValue;
+                                                //     })
+                                                // }
+                                                // sx={{
+                                                //     boxShadow: (ratings && ratings.length > 0 && ratings.some(rating => {
+                                                //         const currentDate = new Date();
+                                                //         const previousMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+                                                //         const previousMonthValue = `${previousMonth.getFullYear()}-${String(previousMonth.getMonth() + 1).padStart(2, '0')}`;
+                                                //         return rating.month === previousMonthValue;
+                                                //     })) ? 'none' : '0 4px 12px rgba(25,118,210,0.3)',
+                                                //     '&:hover': {
+                                                //         transform: (ratings && ratings.length > 0 && ratings.some(rating => {
+                                                //             const currentDate = new Date();
+                                                //             const previousMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+                                                //             const previousMonthValue = `${previousMonth.getFullYear()}-${String(previousMonth.getMonth() + 1).padStart(2, '0')}`;
+                                                //             return rating.month === previousMonthValue;
+                                                //         })) ? 'none' : 'scale(1.05)'
+                                                //     },
+                                                //     opacity: (ratings && ratings.length > 0 && ratings.some(rating => {
+                                                //         const currentDate = new Date();
+                                                //         const previousMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+                                                //         const previousMonthValue = `${previousMonth.getFullYear()}-${String(previousMonth.getMonth() + 1).padStart(2, '0')}`;
+                                                //         return rating.month === previousMonthValue;
+                                                //     })) ? 0.6 : 1
+                                                // }}
                                                 >
                                                     <AddIcon />
                                                 </Fab>
@@ -508,97 +506,95 @@ const PerformanceAnalysisPage = () => {
                                     </Box>
                                 ) : (
                                     <Grid container spacing={2}>
-                                        {[...ratings]
-                                            .sort((a, b) => new Date(b.givenAt) - new Date(a.givenAt))
-                                            .map((rating, index) => (
-                                                <Grid item xs={12} lg={6} key={rating._id || index}>
-                                                    <Card
-                                                        elevation={0}
-                                                        sx={{
-                                                            border: '1px solid #e0e0e0',
-                                                            borderRadius: 2,
-                                                            transition: 'all 0.2s ease',
-                                                            height: 'auto',
-                                                            '&:hover': {
-                                                                boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-                                                                borderColor: '#1976d2'
-                                                            }
-                                                        }}
-                                                    >
-                                                        <CardContent sx={{ p: 2 }}>
-                                                            {/* Month Header */}
-                                                            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-                                                                <Stack direction="row" spacing={1.5} alignItems="center">
-                                                                    <Box
-                                                                        sx={{
-                                                                            width: 36,
-                                                                            height: 36,
-                                                                            borderRadius: 1,
-                                                                            bgcolor: '#f5f5f5',
-                                                                            display: 'flex',
-                                                                            alignItems: 'center',
-                                                                            justifyContent: 'center'
-                                                                        }}
-                                                                    >
-                                                                        <CalendarIcon sx={{ color: '#666', fontSize: 20 }} />
-                                                                    </Box>
-                                                                    <Box>
-                                                                        <Typography variant="subtitle1" fontWeight="600">
-                                                                            {getFullMonthName(rating.month)}
-                                                                        </Typography>
-                                                                        <Typography variant="caption" color="text.secondary">
-                                                                            Rated on {new Date(rating.givenAt).toLocaleDateString()}
-                                                                        </Typography>
-                                                                    </Box>
-                                                                </Stack>
-                                                            </Stack>
-
-                                                            {/* Overall Performance (Always Visible) */}
-                                                            <Paper
-                                                                elevation={0}
-                                                                sx={{
-                                                                    p: 2,
-                                                                    bgcolor: '#f8f9fa',
-                                                                    borderRadius: 2,
-                                                                    border: '1px solid #e0e0e0',
-                                                                    textAlign: 'center',
-                                                                    mb: 2
-                                                                }}
-                                                            >
-                                                                <Typography variant="caption" color="text.secondary" fontWeight="600" gutterBottom>
-                                                                    OVERALL PERFORMANCE
-                                                                </Typography>
-                                                                <Stack direction="row" justifyContent="center" spacing={0.5} my={1}>
-                                                                    {renderStars((rating.rating + rating.SystemRating) / 2)}
-                                                                </Stack>
-                                                                <Typography variant="h5" fontWeight="700" color={getPerformanceColor((rating.rating + rating.SystemRating) / 2)}>
-                                                                    {((rating.rating + rating.SystemRating) / 2).toFixed(1)}/5
-                                                                </Typography>
-                                                                <Typography variant="body2" color="text.secondary" fontWeight="500">
-                                                                    {getPerformanceLevel((rating.rating + rating.SystemRating) / 2)}
-                                                                </Typography>
-                                                            </Paper>
-
-                                                            {/* View Details Button */}
-                                                            <Box textAlign="center" mb={2}>
-                                                                <Button
-                                                                    variant="outlined"
-                                                                    size="small"
-                                                                    onClick={() => handleOpenDetailsModal(rating)}
+                                        {ratings.map((rating, index) => (
+                                            <Grid item xs={12} lg={6} key={rating._id || index}>
+                                                <Card
+                                                    elevation={0}
+                                                    sx={{
+                                                        border: '1px solid #e0e0e0',
+                                                        borderRadius: 2,
+                                                        transition: 'all 0.2s ease',
+                                                        height: 'auto',
+                                                        '&:hover': {
+                                                            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                                                            borderColor: '#1976d2'
+                                                        }
+                                                    }}
+                                                >
+                                                    <CardContent sx={{ p: 2 }}>
+                                                        {/* Month Header */}
+                                                        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+                                                            <Stack direction="row" spacing={1.5} alignItems="center">
+                                                                <Box
                                                                     sx={{
-                                                                        textTransform: 'none',
-                                                                        borderRadius: 1.5,
-                                                                        fontWeight: 500
+                                                                        width: 36,
+                                                                        height: 36,
+                                                                        borderRadius: 1,
+                                                                        bgcolor: '#f5f5f5',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center'
                                                                     }}
                                                                 >
-                                                                    View Details
-                                                                </Button>
-                                                            </Box>
+                                                                    <CalendarIcon sx={{ color: '#666', fontSize: 20 }} />
+                                                                </Box>
+                                                                <Box>
+                                                                    <Typography variant="subtitle1" fontWeight="600">
+                                                                        {getFullMonthName(rating.month)}
+                                                                    </Typography>
+                                                                    <Typography variant="caption" color="text.secondary">
+                                                                        Rated on {new Date(rating.givenAt).toLocaleDateString()}
+                                                                    </Typography>
+                                                                </Box>
+                                                            </Stack>
+                                                        </Stack>
 
-                                                        </CardContent>
-                                                    </Card>
-                                                </Grid>
-                                            ))}
+                                                        {/* Overall Performance (Always Visible) */}
+                                                        <Paper
+                                                            elevation={0}
+                                                            sx={{
+                                                                p: 2,
+                                                                bgcolor: '#f8f9fa',
+                                                                borderRadius: 2,
+                                                                border: '1px solid #e0e0e0',
+                                                                textAlign: 'center',
+                                                                mb: 2
+                                                            }}
+                                                        >
+                                                            <Typography variant="caption" color="text.secondary" fontWeight="600" gutterBottom>
+                                                                OVERALL PERFORMANCE
+                                                            </Typography>
+                                                            <Stack direction="row" justifyContent="center" spacing={0.5} my={1}>
+                                                                {renderStars((rating.rating + rating.SystemRating) / 2)}
+                                                            </Stack>
+                                                            <Typography variant="h5" fontWeight="700" color={getPerformanceColor((rating.rating + rating.SystemRating) / 2)}>
+                                                                {((rating.rating + rating.SystemRating) / 2).toFixed(1)}/5
+                                                            </Typography>
+                                                            <Typography variant="body2" color="text.secondary" fontWeight="500">
+                                                                {getPerformanceLevel((rating.rating + rating.SystemRating) / 2)}
+                                                            </Typography>
+                                                        </Paper>
+
+                                                        {/* View Details Button */}
+                                                        <Box textAlign="center" mb={2}>
+                                                            <Button
+                                                                variant="outlined"
+                                                                size="small"
+                                                                onClick={() => handleOpenDetailsModal(rating)}
+                                                                sx={{
+                                                                    textTransform: 'none',
+                                                                    borderRadius: 1.5,
+                                                                    fontWeight: 500
+                                                                }}
+                                                            >
+                                                                View Details
+                                                            </Button>
+                                                        </Box>
+
+                                                    </CardContent>
+                                                </Card>
+                                            </Grid>
+                                        ))}
                                     </Grid>
                                 )}
                             </Box>

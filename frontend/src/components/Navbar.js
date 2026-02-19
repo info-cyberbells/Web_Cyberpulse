@@ -137,7 +137,8 @@ const Navbar = () => {
         elevation={0}
         sx={{
           backgroundColor: "white",
-          borderBottom: "1px solid rgba(0,0,0,0.08)"
+          borderBottom: "1px solid #e2e8f0",
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
         }}
       >
         <Toolbar sx={{
@@ -175,7 +176,7 @@ const Navbar = () => {
               sx={{
                 fontWeight: 700,
                 fontSize: "1.4rem",
-                color: "#2c3e50",
+                color: "#1e293b",
                 fontFamily: "'Inter', 'Segoe UI', sans-serif",
                 letterSpacing: "-0.01em"
               }}
@@ -223,7 +224,7 @@ const Navbar = () => {
                       sx={{
                         fontSize: '16px',
                         fontWeight: 600,
-                        color: '#2c3e50',
+                        color: '#64748b',
                         mr: 0.5,
                         fontFamily: "'Inter', sans-serif",
                         letterSpacing: "-0.01em",
@@ -236,7 +237,7 @@ const Navbar = () => {
                       className="menu-arrow"
                       sx={{
                         fontSize: '18px',
-                        color: '#2c3e50',
+                        color: '#64748b',
                         transition: 'all 0.3s ease'
                       }}
                     />
@@ -307,7 +308,7 @@ const Navbar = () => {
               <IconButton
                 onClick={toggleDrawer}
                 sx={{
-                  color: "#2c3e50",
+                  color: "#1e293b",
                   p: 1,
                   "&:hover": {
                     backgroundColor: "rgba(59, 130, 246, 0.08)",

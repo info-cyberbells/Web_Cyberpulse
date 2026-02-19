@@ -49,9 +49,11 @@ import HowToRegIcon from '@mui/icons-material/HowToReg';
 import RequestQuoteIcon from '@mui/icons-material/RequestQuote';
 import ArticleIcon from '@mui/icons-material/Article';
 import { DateRange } from "@mui/icons-material";
+import ChatIcon from '@mui/icons-material/Chat';
 import { useNavigate, useLocation } from "react-router-dom";
 import LOGO from "../assets/LOGO.png";
 import SlideshowIcon from '@mui/icons-material/Slideshow';
+import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
 import { Link } from 'react-router-dom';
 
 export const drawerWidth = 260;
@@ -238,6 +240,20 @@ const Sidebar = ({ isLoggedIn, onLogout, children, onStartSlideshow }) => {
       path: "/invoice-management",
       icon: <RequestQuoteIcon />,
       allowedTypes: [1],
+    },
+
+    {
+      title: "Chat",
+      path: "/chat",
+      icon: <ChatIcon />,
+      allowedTypes: [1, 2, 3, 4, 5],
+    },
+
+    {
+      title: "Delete Account",
+      path: "/delete-account",
+      icon: <DeleteForeverIcon />,
+      allowedTypes: [2]
     },
 
     {

@@ -31,7 +31,7 @@ export const addOrUpdateEmployeeRating = async (req, res) => {
         const attendanceData = await calculateMonthlyAttendancePercentage(employeeId, month);
 
 
-        const attendanceStarRating = convertPercentageToStars(attendanceData.percentage);
+        const attendanceStarRating = convertPercentageToStars(attendanceData.percentage, attendanceData.breakdown.totalDaysOff);
 
         let ratingDoc = await EmployeeRating.findOne({ employeeId, month });
 
@@ -71,8 +71,15 @@ export const addOrUpdateEmployeeRating = async (req, res) => {
 };
 
 
-const convertPercentageToStars = (percentage) => {
-    const stars = 1 + (percentage / 100) * 4;
+const convertPercentageToStars = (percentage, totalDaysOff) => {
+    if (totalDaysOff <= 1) {
+        return 5.0;
+    }
+
+    let stars = 1 + (percentage / 100) * 4;
+    const penalty = (totalDaysOff - 1) * 0.1;
+    stars = Math.max(1, stars - penalty);
+
     return Math.round(stars * 10) / 10;
 };
 

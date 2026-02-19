@@ -24,29 +24,28 @@ import ForgotPasswordModal from "./ForgotPasswordModal";
 
 const StyledTextField = styled(TextField)({
   '& .MuiFormLabel-root': {
-    color: '#6b7280',
+    color: '#64748b',
     fontSize: '16px',
     fontWeight: 500,
   },
   '& .MuiFormLabel-root.Mui-focused': {
-    color: '#3b82f6',
+    color: '#2563eb',
   },
   '& .MuiOutlinedInput-root': {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f8fafc',
     '& .MuiInputBase-input': {
-      color: '#111827',
+      color: '#1e293b',
       fontSize: '16px',
       padding: '16px 14px',
     },
-    borderRadius: 8,
     '& fieldset': {
-      borderColor: '#d1d5db',
+      borderColor: '#e2e8f0',
     },
     '&:hover fieldset': {
-      borderColor: '#9ca3af',
+      borderColor: '#cbd5e1',
     },
     '&.Mui-focused fieldset': {
-      borderColor: '#3b82f6',
+      borderColor: '#2563eb',
     },
   },
   '& .MuiFormHelperText-root': {
@@ -181,8 +180,8 @@ const LoginForm = ({ onLogin }) => {
   return (
     <Box
       sx={{
-        minHeight: '85vh',
-        backgroundColor: '#f1f5f9',
+        minHeight: '88.1vh',
+        backgroundColor: '#f8fafc',
         display: 'flex',
         alignItems: 'flex-start',
         justifyContent: 'center',
@@ -195,11 +194,11 @@ const LoginForm = ({ onLogin }) => {
           width: '100%',
           maxWidth: '400px',
           textAlign: 'center',
-          border: '1px solid #e5e7eb',
           borderRadius: '12px',
           padding: '30px',
-          backgroundColor: '#fafafa',
+          backgroundColor: 'white',
           boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+          border: '1px solid #e2e8f0',
         }}
       >
         {/* Logo */}
@@ -220,7 +219,8 @@ const LoginForm = ({ onLogin }) => {
             severity="error"
             sx={{
               mb: 2,
-              borderRadius: '8px',
+              borderRadius: '8px', backgroundColor: '#2a1215',
+              color: '#fecaca',
               fontSize: '14px',
             }}
           >
@@ -234,6 +234,8 @@ const LoginForm = ({ onLogin }) => {
             sx={{
               mb: 3,
               borderRadius: '8px',
+              backgroundColor: '#0f3d2e',
+              color: '#bbf7d0',
               fontSize: '16px',
             }}
           >
@@ -310,12 +312,12 @@ const LoginForm = ({ onLogin }) => {
                 variant="text"
                 onClick={handleForgotPasswordOpen}
                 sx={{
-                  color: "#6b7280",
+                  color: "#64748b",
                   textTransform: "none",
                   fontSize: '16px',
                   padding: '8px 12px',
                   '&:hover': {
-                    backgroundColor: '#f9fafb',
+                    backgroundColor: 'rgba(255,255,255,0.08)',
                   },
                 }}
               >
@@ -337,19 +339,20 @@ const LoginForm = ({ onLogin }) => {
                 py: 1.5,
                 borderRadius: '8px',
                 textTransform: 'none',
+                transition: 'background-color 0.2s ease',
                 mt: 1,
                 '&:hover': {
                   backgroundColor: '#2563eb',
                 },
                 '&:disabled': {
-                  backgroundColor: '#d1d5db',
-                  color: '#9ca3af',
+                  backgroundColor: '#1e3a5a',
+                  color: '#cbd5e1',
                 },
               }}
             >
               {loading ? (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <CircularProgress size={20} sx={{ color: 'white' }} />
+                  <CircularProgress size={20} sx={{ color: '#cbd5e1' }} />
                   Signing in...
                 </Box>
               ) : (
@@ -359,7 +362,7 @@ const LoginForm = ({ onLogin }) => {
 
             {/* Sign Up Link */}
             <Box sx={{ mt: 2, textAlign: 'center' }}>
-              <Typography sx={{ color: '#6b7280', fontSize: '16px' }}>
+              <Typography sx={{ color: '#64748b', fontSize: '16px' }}>
                 Don't have an account?{' '}
                 <Button
                   variant="text"

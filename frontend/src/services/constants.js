@@ -101,4 +101,7 @@ export const API_ROUTES = {
   CREATE_INVOICE: "/invoice/generateInvoice",
   GET_INVOICE_NUMBER: "/invoice/getInvoiceNumber",
   GET_ALL_INVOICES: "/invoice/getAllInvoices",
+
+  DELETE_EMPLOYEE_ACCOUNT: "/employee/delete-account",
+
 };
