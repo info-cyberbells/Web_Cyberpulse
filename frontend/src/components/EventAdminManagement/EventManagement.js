@@ -619,7 +619,11 @@ const EventManagement = () => {
 
   const sortEventsByDate = (events) => {
     if (!events || !Array.isArray(events)) return [];
-    return [...events].sort((a, b) => new Date(a.eventDate) - new Date(b.eventDate));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const upcoming = events.filter(e => new Date(e.eventDate) >= today).sort((a, b) => new Date(a.eventDate) - new Date(b.eventDate));
+    const past = events.filter(e => new Date(e.eventDate) < today).sort((a, b) => new Date(b.eventDate) - new Date(a.eventDate));
+    return { upcoming, past };
   };
 
   const handleTabChange = (event, newValue) => {
@@ -862,116 +866,237 @@ const EventManagement = () => {
         </CardContent>
       </Card>
 
-      <Box mt={2}>
+      <Box mt={3}>
         {loading ? (
           <Box display="flex" justifyContent="center" p={4}>
             <CircularProgress />
           </Box>
         ) : eventList.length === 0 ? (
           <NoEventsPlaceholder>
-            <Typography variant="h6">No events scheduled</Typography>
+            <EventIcon sx={{ fontSize: 48, color: "#bdbdbd", mb: 1 }} />
+            <Typography variant="h6" color="text.secondary">No events scheduled</Typography>
           </NoEventsPlaceholder>
         ) : (
-          <StyledEventList elevation={0}>
-            <List disablePadding>
-              {sortEventsByDate(eventList).map((event) => (
-                <ListItem key={event._id} disableGutters sx={{ mb: 0 }}>
-                  <EventCard elevation={0} sx={{ width: '100%' }}>
-                    <CardContent>
-                      <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                        <Box>
-                          <Typography variant="h6" gutterBottom>
-                            {event.title}
-                          </Typography>
-                          <Box display="flex" alignItems="center" sx={{ mb: 1 }}>
-                            <AccessTimeIcon fontSize="small" color="action" sx={{ mr: 1 }} />
-                            <Typography variant="body2" color="text.secondary">
-                              {format(new Date(event.eventDate), "MMM dd, yyyy")}
-                              {event.startTime && ` · ${event.startTime}`}
-                              {event.endTime && ` - ${event.endTime}`}
-                            </Typography>
-                          </Box>
-                          {event.location && (
-                            <Box display="flex" alignItems="center" sx={{ mb: 1 }}>
-                              <LocationOnIcon fontSize="small" color="action" sx={{ mr: 1 }} />
-                              <Typography variant="body2" color="text.secondary">
-                                {event.location}
-                              </Typography>
-                            </Box>
-                          )}
-                        </Box>
+          (() => {
+            const { upcoming, past } = sortEventsByDate(eventList);
 
-                        <Box>
-                          <StyledChip
-                            label={event.eventType}
-                            size="small"
-                            color="primary"
-                            variant="outlined"
-                          />
+            const renderEventCard = (event) => {
+              const eventDate = event.eventDate ? new Date(event.eventDate) : null;
+              let daysUntil = null;
+              if (eventDate) {
+                const todayStart = new Date();
+                todayStart.setHours(0, 0, 0, 0);
+                const eventStart = new Date(eventDate);
+                eventStart.setHours(0, 0, 0, 0);
+                daysUntil = Math.round((eventStart - todayStart) / (1000 * 60 * 60 * 24));
+              }
+              const isPast = daysUntil !== null && daysUntil < 0;
+              const statusColor =
+                event.status === "completed" ? "#4caf50" :
+                event.status === "cancelled" ? "#f44336" :
+                event.status === "postponed" ? "#ff9800" : "#1976d2";
 
-                          {event.status && (
-                            <StyledChip
-                              label={event.status}
-                              size="small"
-                              color={
-                                event.status === "completed" ? "success" :
-                                  event.status === "cancelled" ? "error" : "default"
-                              }
-                            />
-                          )}
-                        </Box>
+              return (
+                <Card
+                  key={event._id}
+                  sx={{
+                    borderRadius: 3,
+                    border: "1px solid #e8eaf0",
+                    boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+                    opacity: isPast ? 0.65 : 1,
+                    transition: "all 0.2s",
+                    "&:hover": { boxShadow: "0 4px 16px rgba(0,0,0,0.08)", borderColor: "#c5d3f0" },
+                    overflow: "visible",
+                  }}
+                >
+                  <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+                    <Box sx={{ display: "flex", gap: 2 }}>
+                      {/* Date badge */}
+                      <Box
+                        sx={{
+                          minWidth: 56,
+                          height: 56,
+                          bgcolor: isPast ? "#f5f5f5" : "#eef3ff",
+                          borderRadius: 2.5,
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          border: "1px solid",
+                          borderColor: isPast ? "#e0e0e0" : "#c5d3f0",
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Typography sx={{ fontSize: "0.6rem", fontWeight: 700, color: isPast ? "#999" : "#1565c0", textTransform: "uppercase", lineHeight: 1 }}>
+                          {eventDate ? format(eventDate, "MMM") : ""}
+                        </Typography>
+                        <Typography sx={{ fontSize: "1.25rem", fontWeight: 800, color: isPast ? "#999" : "#1565c0", lineHeight: 1.2 }}>
+                          {eventDate ? format(eventDate, "dd") : ""}
+                        </Typography>
+                        <Typography sx={{ fontSize: "0.55rem", fontWeight: 600, color: isPast ? "#bbb" : "#5b8def", lineHeight: 1 }}>
+                          {eventDate ? format(eventDate, "EEE") : ""}
+                        </Typography>
                       </Box>
 
-                      {event.description && (
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 2 }}>
-                          {event.description}
-                        </Typography>
-                      )}
+                      {/* Content */}
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1 }}>
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography variant="subtitle1" fontWeight={700} fontSize="0.95rem" noWrap color="#1e293b">
+                              {event.title}
+                            </Typography>
+                            <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 0.3 }}>
+                              <AccessTimeIcon sx={{ fontSize: 14, color: "text.disabled" }} />
+                              <Typography variant="caption" color="text.secondary" fontSize="0.75rem">
+                                {eventDate ? format(eventDate, "dd MMM yyyy") : ""}
+                                {event.startTime && ` · ${event.startTime}`}
+                                {event.endTime && ` - ${event.endTime}`}
+                              </Typography>
+                            </Stack>
+                            {event.location && (
+                              <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 0.2 }}>
+                                <LocationOnIcon sx={{ fontSize: 14, color: "text.disabled" }} />
+                                <Typography variant="caption" color="text.secondary" fontSize="0.75rem">
+                                  {event.location}
+                                </Typography>
+                              </Stack>
+                            )}
+                            {event.createdBy?.name && (
+                              <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 0.2 }}>
+                                <PersonIcon sx={{ fontSize: 14, color: "text.disabled" }} />
+                                <Typography variant="caption" color="text.secondary" fontSize="0.75rem">
+                                  Posted by: <strong>{event.createdBy.name}</strong>
+                                </Typography>
+                              </Stack>
+                            )}
+                          </Box>
 
-                      {event.teamMembers && event.teamMembers.length > 0 && (
-                        <Box sx={{ mt: 2 }}>
-                          <Typography variant="subtitle2" gutterBottom>
-                            Team Members:
+                          <Stack direction="row" spacing={0.5} alignItems="center" flexShrink={0}>
+                            {daysUntil !== null && !isPast && (
+                              <Chip
+                                label={daysUntil === 0 ? "Today" : daysUntil === 1 ? "Tomorrow" : `${daysUntil}d left`}
+                                size="small"
+                                sx={{
+                                  height: 22, fontSize: "0.68rem", fontWeight: 700,
+                                  bgcolor: daysUntil === 0 ? "#e8f5e9" : daysUntil <= 3 ? "#fff3e0" : "#f5f5f5",
+                                  color: daysUntil === 0 ? "#2e7d32" : daysUntil <= 3 ? "#e65100" : "#666",
+                                  border: "1px solid",
+                                  borderColor: daysUntil === 0 ? "#c8e6c9" : daysUntil <= 3 ? "#ffe0b2" : "#e0e0e0",
+                                }}
+                              />
+                            )}
+                            <Chip
+                              label={event.eventType}
+                              size="small"
+                              sx={{ height: 22, fontSize: "0.68rem", fontWeight: 600, bgcolor: "#eef3ff", color: "#1565c0", border: "1px solid #c5d3f0" }}
+                            />
+                            {event.status && (
+                              <Chip
+                                label={event.status}
+                                size="small"
+                                sx={{
+                                  height: 22, fontSize: "0.68rem", fontWeight: 700, color: "#fff",
+                                  bgcolor: statusColor,
+                                }}
+                              />
+                            )}
+                          </Stack>
+                        </Box>
+
+                        {event.description && (
+                          <Typography variant="body2" color="text.secondary" fontSize="0.8rem" sx={{ mt: 1, lineHeight: 1.5 }}>
+                            {event.description.length > 150 ? `${event.description.slice(0, 150)}...` : event.description}
                           </Typography>
-                          <Stack direction="row" spacing={1}>
-                            {getTeamMemberDetails(event.teamMembers, employeeList).map((member) => (
+                        )}
+
+                        {event.teamMembers && event.teamMembers.length > 0 && (
+                          <Stack direction="row" spacing={0.5} flexWrap="wrap" sx={{ mt: 1, gap: 0.5 }}>
+                            {getTeamMemberDetails(event.teamMembers, employeeList).slice(0, 5).map((member) => (
                               <Chip
                                 key={member._id}
-                                icon={<PersonIcon />}
+                                icon={<PersonIcon sx={{ fontSize: "14px !important" }} />}
                                 label={member.name}
                                 size="small"
                                 variant="outlined"
+                                sx={{ height: 24, fontSize: "0.72rem", borderColor: "#e0e0e0" }}
                               />
                             ))}
+                            {getTeamMemberDetails(event.teamMembers, employeeList).length > 5 && (
+                              <Chip
+                                label={`+${getTeamMemberDetails(event.teamMembers, employeeList).length - 5}`}
+                                size="small"
+                                sx={{ height: 24, fontSize: "0.72rem", bgcolor: "#f5f5f5" }}
+                              />
+                            )}
                           </Stack>
-                        </Box>
-                      )}
+                        )}
 
-                      {usertype !== 2 && (
-                        <Box display="flex" justifyContent="flex-end" sx={{ mt: 2 }}>
-                          <IconButton
-                            size="small"
-                            color="primary"
-                            onClick={() => handleOpenDialog(event)}
-                            sx={{ mr: 1 }}
-                          >
-                            <EditIcon />
-                          </IconButton>
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => handleDelete(event._id)}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </Box>
-                      )}
-                    </CardContent>
-                  </EventCard>
-                </ListItem>
-              ))}
-            </List>
-          </StyledEventList>
+                        {usertype !== 2 && (
+                          <Box display="flex" justifyContent="flex-end" sx={{ mt: 1 }}>
+                            <IconButton
+                              size="small"
+                              onClick={(e) => { e.stopPropagation(); handleOpenDialog(event); }}
+                              sx={{ color: "#1976d2", bgcolor: "#e3f2fd", mr: 0.5, width: 30, height: 30, "&:hover": { bgcolor: "#bbdefb" } }}
+                            >
+                              <EditIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              onClick={(e) => { e.stopPropagation(); handleDelete(event._id); }}
+                              sx={{ color: "#f44336", bgcolor: "#fce4ec", width: 30, height: 30, "&:hover": { bgcolor: "#f8bbd0" } }}
+                            >
+                              <DeleteIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          </Box>
+                        )}
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              );
+            };
+
+            return (
+              <>
+                {/* Upcoming Events */}
+                <Box sx={{ mb: 3 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+                    <Typography variant="h6" fontWeight={700} fontSize="1.1rem" color="#1e293b">
+                      Upcoming Events
+                    </Typography>
+                    {upcoming.length > 0 && (
+                      <Chip label={`${upcoming.length} upcoming`} size="small" sx={{ fontWeight: 600, bgcolor: "#e8f5e9", color: "#2e7d32" }} />
+                    )}
+                  </Box>
+                  {upcoming.length === 0 ? (
+                    <NoEventsPlaceholder>
+                      <EventIcon sx={{ fontSize: 48, color: "#bdbdbd", mb: 1 }} />
+                      <Typography variant="body1" color="text.secondary">No upcoming events</Typography>
+                    </NoEventsPlaceholder>
+                  ) : (
+                    <Stack spacing={1.5}>
+                      {upcoming.map(renderEventCard)}
+                    </Stack>
+                  )}
+                </Box>
+
+                {/* Past Events */}
+                {past.length > 0 && (
+                  <Box>
+                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+                      <Typography variant="h6" fontWeight={700} fontSize="1.1rem" color="#9e9e9e">
+                        Past Events
+                      </Typography>
+                      <Chip label={`${past.length} past`} size="small" sx={{ fontWeight: 600, bgcolor: "#f5f5f5", color: "#999" }} />
+                    </Box>
+                    <Stack spacing={1.5}>
+                      {past.map(renderEventCard)}
+                    </Stack>
+                  </Box>
+                )}
+              </>
+            );
+          })()
         )}
       </Box>
 

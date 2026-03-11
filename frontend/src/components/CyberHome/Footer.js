@@ -1,5 +1,6 @@
 import React from "react";
 import { Box, Typography } from '@mui/material';
+import { Link as RouterLink } from 'react-router-dom';
 import Instagram from '@mui/icons-material/Instagram';
 import LinkedIn from '@mui/icons-material/LinkedIn';
 import Facebook from '@mui/icons-material/Facebook';
@@ -78,11 +79,11 @@ const Footer = () => {
 
                 <Box sx={{ minWidth: '200px' }}>
                     <Typography sx={{ fontWeight: 'bold', mb: 2, fontSize: '16px' }}>Support</Typography>
-                    <Typography sx={{ mb: 1, fontSize: '14px', color: '#cccccc', cursor: 'pointer', '&:hover': { color: '#2563eb' } }}>
-                        Feedback
+                    <Typography component={RouterLink} to="/support" sx={{ display: 'block', mb: 1, fontSize: '14px', color: '#cccccc', cursor: 'pointer', textDecoration: 'none', '&:hover': { color: '#2563eb' } }}>
+                        Help Center
                     </Typography>
                     <Typography sx={{ mb: 1, fontSize: '14px', color: '#cccccc', cursor: 'pointer', '&:hover': { color: '#2563eb' } }}>
-                        Help Center
+                        Feedback
                     </Typography>
                     <Typography sx={{ mb: 1, fontSize: '14px', color: '#cccccc', cursor: 'pointer', '&:hover': { color: '#2563eb' } }}>
                         Time Tracking FAQ
@@ -207,7 +208,7 @@ const Footer = () => {
                     <Typography sx={{ fontSize: '12px', color: '#cccccc', cursor: 'pointer', '&:hover': { color: '#2563eb' } }}>
                         Terms & Conditions
                     </Typography>
-                    <Typography sx={{ fontSize: '12px', color: '#cccccc', cursor: 'pointer', '&:hover': { color: '#2563eb' } }}>
+                    <Typography component={RouterLink} to="/privacy-policy" sx={{ fontSize: '12px', color: '#cccccc', cursor: 'pointer', textDecoration: 'none', '&:hover': { color: '#2563eb' } }}>
                         Privacy Policy
                     </Typography>
                 </Box>

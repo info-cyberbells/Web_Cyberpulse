@@ -57,6 +57,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import PlayIcon from "@mui/icons-material/PlayArrow";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { getOrgSettings, pauseAllRunningTasks } from "../services/services";
 import {
   AccessTime,
   CheckCircle as CheckCircleIcon,
@@ -100,7 +101,6 @@ const AttendanceManagement = () => {
   const [lastElapsedSeconds, setLastElapsedSeconds] = useState(0);
 
   const [isBreakModalOpen, setIsBreakModalOpen] = useState(false);
-  const [breakType, setBreakType] = useState('');
   const [breakDescription, setBreakDescription] = useState('');
   const [breakTimer, setBreakTimer] = useState(0);
   const [breakHistoryExpanded, setBreakHistoryExpanded] = useState(false);
@@ -108,6 +108,14 @@ const AttendanceManagement = () => {
   const [isBreakLoading, setIsBreakLoading] = useState(false);
   const [isBreakPaused, setIsBreakPaused] = useState(false);
   const [pausedBreakTime, setPausedBreakTime] = useState(0);
+  const [orgSettings, setOrgSettings] = useState({
+    workingHoursRequired: 8,
+    maxBreakDurationMinutes: 60,
+    minClockOutHour: 18,
+    minClockOutMinute: 0,
+  });
+  const [showIncompleteHoursDialog, setShowIncompleteHoursDialog] = useState(false);
+  const [incompleteHoursData, setIncompleteHoursData] = useState(null);
 
   const getCurrentISOTime = () => {
     const now = new Date();
@@ -138,18 +146,27 @@ const AttendanceManagement = () => {
     }
   };
 
-  const breakOptions = [
-    // { value: 'Morning Tea/Coffee', label: 'Morning Tea/Coffee Break (Max 10 minutes)', duration: 10 * 60 },
-    { value: 'Lunch Break', label: 'Lunch Break (Max 30 minutes)', duration: 30 * 60 },
-    // { value: 'Evening Tea/Coffee', label: 'Evening Tea/Coffee Break (Max 10 minutes)', duration: 10 * 60 },
-    { value: 'other', label: 'Other', duration: 0 },
-  ];
-
   useEffect(() => {
     const id = getUserId();
     if (id) {
       setEmployeeId(id);
     }
+    // Fetch organization settings
+    const fetchOrgSettings = async () => {
+      try {
+        const userData = JSON.parse(localStorage.getItem("user"));
+        const orgId = userData?.employee?.organizationId;
+        if (orgId) {
+          const response = await getOrgSettings(orgId);
+          if (response?.success && response?.data) {
+            setOrgSettings(response.data);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch org settings:", error);
+      }
+    };
+    fetchOrgSettings();
   }, []);
 
   const getBreakIcon = (breakName) => {
@@ -281,43 +298,30 @@ const AttendanceManagement = () => {
   };
 
   const pauseActiveTask = async () => {
-    console.log("pauseActiveTask called - Checking for active task...");
+    console.log("pauseActiveTask called - Pausing all running tasks via backend...");
     try {
-      const activeTask = reduxTasks.find((task) => task.status === "In Progress");
-      if (activeTask) {
-        console.log(`Found active task: ${activeTask._id}, Description: ${activeTask.description}, Current Duration: ${activeTask.duration}`);
-        const currentTime = getCurrentISOTime(); // Use consistent format
-        const finalDuration = activeTask.duration || 0;
-        console.log(`Pausing task ${activeTask._id} at ${currentTime} with duration ${finalDuration}`);
-        await dispatch(
-          updateTaskStatusAsync({
-            id: activeTask._id,
-            taskData: {
-              status: "Paused",
-              attendanceId: clockInData?._id,
-              currentTime,
-              duration: finalDuration,
-            },
-          })
-        ).unwrap();
-        console.log(`Task ${activeTask._id} status updated to Paused in backend`);
-        const userId = getUserId();
-        if (userId) {
-          await dispatch(
-            fetchTasksAsync({
-              employeeId: userId,
-              date: currentDate,
-            })
-          );
-          console.log("Task list refreshed after pausing");
-        }
-      } else {
-        console.log("No active task found to pause");
+      const userId = getUserId();
+      if (!userId) {
+        console.log("No userId found, skipping pause");
+        return;
       }
+
+      // Call backend to pause all running tasks (handles duration calculation properly)
+      const result = await pauseAllRunningTasks(userId);
+      console.log("Backend pauseAllRunningTasks result:", result);
+
+      // Refresh tasks list
+      await dispatch(
+        fetchTasksAsync({
+          employeeId: userId,
+          date: currentDate,
+        })
+      );
+      console.log("Task list refreshed after pausing");
     } catch (error) {
-      console.error("Error pausing active task:", error);
+      console.error("Error pausing active tasks:", error);
       toast.dismiss();
-      toast.error("Failed to pause active task");
+      toast.error("Failed to pause active tasks");
     }
   };
 
@@ -599,12 +603,10 @@ const AttendanceManagement = () => {
   const checkTimeAndClockOut = (currentTime) => {
     const currentHour = currentTime.getHours();
     const currentMinutes = currentTime.getMinutes();
-    // Convert to 24-hour format: 18:00 is 6 PM
     const clockOutTime = {
-      hours: 18,
-      minutes: 0,
+      hours: orgSettings.minClockOutHour,
+      minutes: orgSettings.minClockOutMinute,
     };
-    // Return true if current time is past 6 PM
     return (
       currentHour > clockOutTime.hours ||
       (currentHour === clockOutTime.hours &&
@@ -620,6 +622,26 @@ const AttendanceManagement = () => {
     };
   }, [isClockingIn]);
 
+  const calculateWorkingHours = () => {
+    if (!clockInData?.timestamp) return 0;
+    const now = new Date();
+    const start = new Date(clockInData.timestamp);
+    const totalSeconds = Math.floor((now - start) / 1000);
+    const totalBreakSeconds = currentAttendance?.breakTimings?.reduce((acc, b) => {
+      const paused = b.pausedDuration || 0;
+      if (b.startTime && b.endTime) {
+        const total = Math.floor((new Date(b.endTime) - new Date(b.startTime)) / 1000);
+        return acc + Math.max(0, total - paused);
+      }
+      if (b.startTime && !b.endTime) {
+        const total = Math.floor((now - new Date(b.startTime)) / 1000);
+        return acc + Math.max(0, total - paused);
+      }
+      return acc;
+    }, 0) || 0;
+    return Math.max(0, totalSeconds - totalBreakSeconds) / 3600;
+  };
+
   const handleClockOut = async () => {
     if (!clockInData?._id) {
       toast.dismiss();
@@ -629,10 +651,28 @@ const AttendanceManagement = () => {
     const now = new Date();
     const canClockOut = checkTimeAndClockOut(now);
     if (!canClockOut) {
+      const h = orgSettings.minClockOutHour;
+      const m = orgSettings.minClockOutMinute;
+      const timeStr = `${h > 12 ? h - 12 : h}:${m.toString().padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
       toast.dismiss();
-      toast.warning("You can only clock out after 6:00 PM");
+      toast.warning(`You can only clock out after ${timeStr}`);
       return;
     }
+
+    // Check if working hours are complete
+    const workedHours = calculateWorkingHours();
+    if (workedHours < orgSettings.workingHoursRequired) {
+      const hrs = Math.floor(workedHours);
+      const mins = Math.floor((workedHours - hrs) * 60);
+      setIncompleteHoursData({ hours: hrs, minutes: mins });
+      setShowIncompleteHoursDialog(true);
+      return;
+    }
+
+    await performClockOut();
+  };
+
+  const performClockOut = async () => {
     try {
       await pauseActiveTask();
       const clockOutTime = getCurrentISOTime();
@@ -648,7 +688,7 @@ const AttendanceManagement = () => {
         }
         return acc;
       }, 0);
-      const clockOutData = {
+      const clockOutPayload = {
         clockOutTime,
         type: "CLOCK_OUT",
         isEmergency: false,
@@ -656,11 +696,10 @@ const AttendanceManagement = () => {
         breakTimings: updatedBreakTimings,
         Employeestatus: "clocked out",
       };
-      console.log("Clock out payload:", clockOutData); // Debug log
       const response = await dispatch(
         clockOutAsync({
           id: clockInData._id,
-          clockOutData: clockOutData,
+          clockOutData: clockOutPayload,
         })
       ).unwrap();
       if (response?.attendance) {
@@ -1911,11 +1950,11 @@ const AttendanceManagement = () => {
         </DialogActions>
       </Dialog>
 
+      {/* Break Dialog - Simple reason only */}
       <Dialog
         open={isBreakModalOpen}
         onClose={() => {
           setIsBreakModalOpen(false);
-          setBreakType('');
           setBreakDescription('');
         }}
         fullWidth
@@ -1943,48 +1982,14 @@ const AttendanceManagement = () => {
         </DialogTitle>
         <DialogContent sx={{ p: 3, pt: 3 }}>
           <Typography variant="body1" sx={{ color: 'text.secondary', mb: 2 }}>
-            Select a break type and add a description if needed
+            Enter a reason for your break
           </Typography>
           <TextField
-            select
             fullWidth
-            label="Break Type"
-            value={breakType || ''}
-            onChange={(e) => setBreakType(e.target.value)}
-            sx={{
-              mb: 3,
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2
-              }
-            }}
-            SelectProps={{
-              native: true
-            }}
-            variant="outlined"
-            helperText="Choose a break type"
-          >
-            <option value=""></option>
-            {breakOptions.map((option) => (
-              <option
-                key={option.value}
-                value={option.value}
-                disabled={
-                  option.value !== 'other' &&
-                  currentAttendance?.breakTimings?.some(
-                    (b) => b.name === option.value && new Date(b.startTime).toDateString() === new Date().toDateString()
-                  )
-                }
-              >
-                {option.label}
-              </option>
-            ))}
-          </TextField>
-          <TextField
-            fullWidth
-            label="Description"
+            label="Reason"
             value={breakDescription}
             onChange={(e) => setBreakDescription(e.target.value)}
-            placeholder={breakType === 'other' ? 'E.g., Doctor visit, personal errand' : 'Optional notes'}
+            placeholder="E.g., Lunch, Tea/Coffee, Personal errand, etc."
             multiline
             rows={3}
             sx={{
@@ -1993,16 +1998,15 @@ const AttendanceManagement = () => {
               }
             }}
             variant="outlined"
-            helperText={breakType === 'other' ? 'Description is required for Other breaks' : 'Optional details about your break'}
-            required={breakType === 'other'}
-            error={breakType === 'other' && !breakDescription.trim()}
+            helperText={`Max daily break: ${orgSettings.maxBreakDurationMinutes} minutes`}
+            required
+            error={!breakDescription.trim()}
           />
         </DialogContent>
         <DialogActions sx={{ p: 2.5, borderTop: '1px solid', borderColor: 'divider' }}>
           <Button
             onClick={() => {
               setIsBreakModalOpen(false);
-              setBreakType('');
               setBreakDescription('');
             }}
             variant="outlined"
@@ -2019,23 +2023,10 @@ const AttendanceManagement = () => {
           <Button
             onClick={async () => {
               setIsBreakLoading(true);
-              if (!breakType) {
+              if (!breakDescription.trim()) {
                 toast.dismiss();
-                toast.error('Please select a break type');
-                return;
-              }
-              if (
-                breakType !== 'other' &&
-                currentAttendance?.breakTimings?.some(
-                  (b) => b.name === breakType && new Date(b.startTime).toDateString() === new Date().toDateString()
-                )
-              ) {
-                toast.error('This break type has already been used today');
-                return;
-              }
-              if (breakType === 'other' && !breakDescription.trim()) {
-                toast.dismiss();
-                toast.error('Please provide a description for Other break');
+                toast.error('Please provide a reason for your break');
+                setIsBreakLoading(false);
                 return;
               }
               try {
@@ -2049,7 +2040,7 @@ const AttendanceManagement = () => {
                 const updatedBreakTimings = [
                   ...(currentAttendance?.breakTimings || []),
                   {
-                    name: breakType === 'other' ? breakDescription.trim() : breakType,
+                    name: breakDescription.trim(),
                     startTime: now,
                     endTime: null,
                   },
@@ -2067,9 +2058,8 @@ const AttendanceManagement = () => {
                   await dispatch(getAttendance({ id: userId, date: currentDate }));
                 }
                 setIsBreakModalOpen(false);
-                toast.success(`Started ${breakType === 'other' ? 'Other break' : breakOptions.find((opt) => opt.value === breakType)?.label}`);
+                toast.success(`Break started: ${breakDescription.trim()}`);
                 setBreakDescription('');
-                setBreakType('');
               } catch (error) {
                 console.error("Error starting break:", error);
                 toast.dismiss();
@@ -2081,7 +2071,7 @@ const AttendanceManagement = () => {
             }}
             variant="contained"
             color="warning"
-            disabled={!breakType || (breakType === 'other' && !breakDescription.trim()) || isBreakLoading}
+            disabled={!breakDescription.trim() || isBreakLoading}
             sx={{
               borderRadius: 2,
               textTransform: 'none',
@@ -2091,6 +2081,73 @@ const AttendanceManagement = () => {
             startIcon={isBreakLoading ? <CircularProgress size={20} color="inherit" /> : null}
           >
             {isBreakLoading ? 'Starting Break...' : 'Start Break'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Incomplete Hours Warning Dialog */}
+      <Dialog
+        open={showIncompleteHoursDialog}
+        onClose={() => setShowIncompleteHoursDialog(false)}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+          }
+        }}
+      >
+        <DialogTitle sx={{
+          bgcolor: 'warning.main',
+          color: 'white',
+          py: 2,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1
+        }}>
+          <WarningIcon />
+          <Typography variant="h6" fontWeight={600}>
+            Incomplete Working Hours
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ p: 3, pt: 3 }}>
+          <Typography variant="body1" sx={{ mb: 1 }}>
+            You have worked only <strong>{incompleteHoursData?.hours}h {incompleteHoursData?.minutes}m</strong>.
+          </Typography>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            Required: <strong>{orgSettings.workingHoursRequired} hours</strong>. Do you still want to clock out?
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5, borderTop: '1px solid', borderColor: 'divider' }}>
+          <Button
+            onClick={() => setShowIncompleteHoursDialog(false)}
+            variant="contained"
+            color="success"
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600,
+              px: 3
+            }}
+          >
+            Continue Working
+          </Button>
+          <Button
+            onClick={async () => {
+              setShowIncompleteHoursDialog(false);
+              await performClockOut();
+            }}
+            variant="contained"
+            color="error"
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600,
+              px: 3
+            }}
+          >
+            Clock Out Anyway
           </Button>
         </DialogActions>
       </Dialog>

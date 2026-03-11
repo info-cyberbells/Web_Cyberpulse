@@ -40,6 +40,8 @@ import { styled } from "@mui/material/styles";
 import { useNavigate } from "react-router-dom";
 import NoteAltIcon from '@mui/icons-material/NoteAlt';
 import FactCheckIcon from '@mui/icons-material/FactCheck';
+import ChatIcon from '@mui/icons-material/Chat';
+import LoginIcon from '@mui/icons-material/Login';
 import {
   fetchAllAnnoucements,
   clearSuccessMessage,
@@ -63,7 +65,7 @@ const StyledCard = styled(Card)(({ theme }) => ({
 }));
 
 const WelcomeCard = styled(Paper)(({ theme }) => ({
-  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+  background: `linear-gradient(135deg, #14B8A6 0%, #0284C7 100%)`,
   color: theme.palette.primary.contrastText,
   borderRadius: 16,
   padding: theme.spacing(2.5),
@@ -199,23 +201,30 @@ const Dashboard = () => {
   const quickActions = [
     {
       id: "1",
-      title: "Attendance",
-      icon: <HowToRegIcon sx={{ fontSize: 32 }} />,
-      bgColor: theme.palette.success.main,
+      title: "Clock In",
+      icon: <LoginIcon sx={{ fontSize: 32 }} />,
+      bgColor: "#6C63FF",
       onClick: () => navigate("/attendance"),
     },
     {
       id: "2",
-      title: "Apply Leave",
-      icon: <NoteAltIcon sx={{ fontSize: 32 }} />,
-      bgColor: theme.palette.warning.main,
-      onClick: () => navigate("/leave"),
+      title: "Messages",
+      icon: <ChatIcon sx={{ fontSize: 32 }} />,
+      bgColor: "#2EC06A",
+      onClick: () => navigate("/chat"),
     },
     {
       id: "3",
+      title: "Apply Leave",
+      icon: <NoteAltIcon sx={{ fontSize: 32 }} />,
+      bgColor: "#E040FB",
+      onClick: () => navigate("/leave"),
+    },
+    {
+      id: "4",
       title: "Tasks",
       icon: <FactCheckIcon sx={{ fontSize: 32 }} />,
-      bgColor: theme.palette.info.main,
+      bgColor: "#1E88E5",
       onClick: () => navigate("/task"),
     },
   ];
@@ -478,21 +487,20 @@ const Dashboard = () => {
           <Typography variant="h5" sx={{ mb: 3, fontWeight: 700, color: theme.palette.text.primary }}>
             Quick Actions
           </Typography>
-          <Grid container spacing={3.5}> {/* Slightly more gap */}
+          <Grid container spacing={2}>
             {quickActions.map((action) => (
-              <Grid item xs={12} sm={6} md={4} key={action.id}>
-                <Box sx={{ maxWidth: '360px', margin: '0 auto' }}> {/* Limit width */}
-                  <ActionButton
-                    fullWidth
-                    onClick={action.onClick}
-                    bgColor={action.bgColor}
-                  >
-                    {action.icon}
-                    <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                      {action.title}
-                    </Typography>
-                  </ActionButton>
-                </Box>
+              <Grid item xs={6} sm={3} key={action.id}>
+                <ActionButton
+                  fullWidth
+                  onClick={action.onClick}
+                  bgColor={action.bgColor}
+                  sx={{ height: '100px', borderRadius: '16px' }}
+                >
+                  {action.icon}
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: '0.82rem' }}>
+                    {action.title}
+                  </Typography>
+                </ActionButton>
               </Grid>
             ))}
           </Grid>

@@ -1,4 +1,5 @@
 import HelpDesk from '../model/helpDeskModel.js';
+import { createNotification } from "../helpers/createNotification.js";
 
 export const addHelpDesk = async (req, res) => {
   try {
@@ -17,6 +18,19 @@ export const addHelpDesk = async (req, res) => {
     });
 
     await newRecord.save();
+
+    // Notify Admin/HR/Manager about new help desk ticket
+    if (organizationId && employeeId) {
+      createNotification("helpdesk_ticket", {
+        triggeredBy: employeeId,
+        organizationId,
+        title: "New Help Desk Ticket",
+        message: `New ${type} ticket: "${description.substring(0, 80)}${description.length > 80 ? '...' : ''}"`,
+        resourceId: newRecord._id,
+        resourceType: "helpdesk",
+      });
+    }
+
     res.status(201).json({
       message: 'Ticket created successfully',
       data: newRecord,

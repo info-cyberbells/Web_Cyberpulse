@@ -85,6 +85,30 @@ export const listProjects = async () => {
   }
 };
 
+export const getProjectDetail = async (projectId) => {
+  try {
+    const response = await apiClient.get(`${API_ROUTES.DETAIL_PROJECT}${projectId}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const fetchTasksByProject = async (projectName) => {
+  try {
+    const organizationId = getOrganizationId();
+    const response = await apiClient.get(API_ROUTES.FETCH_TASKS_BY_PROJECT, {
+      params: {
+        projectName,
+        ...(organizationId && { organizationId }),
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 // Add employee service
 export const addEmployee = async (employeeData) => {
   const organizationId = getOrganizationId();
@@ -297,6 +321,170 @@ export const getLeaveById = async (employeeId) => {
   try {
     const response = await apiClient.get(`${API_ROUTES.LIST_LEAVE}/${employeeId}`);
     console.log(response)
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Check WFH eligibility
+export const checkWfhEligibility = async (employeeId) => {
+  try {
+    const response = await apiClient.get(`${API_ROUTES.CHECK_WFH_ELIGIBILITY}${employeeId}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const checkBirthdayLeaveEligibility = async (employeeId) => {
+  try {
+    const response = await apiClient.get(`${API_ROUTES.CHECK_BIRTHDAY_ELIGIBILITY}${employeeId}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Send credit update request
+export const sendCreditUpdateRequest = async (data) => {
+  try {
+    const response = await apiClient.post(API_ROUTES.SEND_CREDIT_UPDATE_REQUEST, data);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Get all credit update requests (for TL/HR/Manager)
+export const getAllCreditUpdateRequests = async (organizationId, status) => {
+  try {
+    const params = {};
+    if (organizationId) params.organizationId = organizationId;
+    if (status) params.status = status;
+    const response = await apiClient.get(API_ROUTES.GET_ALL_CREDIT_UPDATE_REQUESTS, { params });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Get my credit update requests
+export const getMyCreditUpdateRequests = async () => {
+  try {
+    const response = await apiClient.get(API_ROUTES.GET_MY_CREDIT_UPDATE_REQUESTS);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Update credit update request status
+export const updateCreditUpdateRequestStatus = async (id, status) => {
+  try {
+    const response = await apiClient.put(`${API_ROUTES.UPDATE_CREDIT_UPDATE_REQUEST}${id}`, { status });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Notifications
+export const getNotifications = async (page = 1, limit = 50) => {
+  try {
+    const response = await apiClient.get(`${API_ROUTES.GET_NOTIFICATIONS}?page=${page}&limit=${limit}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getUnreadNotificationCount = async () => {
+  try {
+    const response = await apiClient.get(API_ROUTES.GET_UNREAD_COUNT);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const markNotificationAsRead = async (notificationId) => {
+  try {
+    const response = await apiClient.patch(`${API_ROUTES.MARK_NOTIFICATION_READ}${notificationId}/read`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const markAllNotificationsAsRead = async () => {
+  try {
+    const response = await apiClient.patch(API_ROUTES.MARK_ALL_NOTIFICATIONS_READ);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getNotificationSettings = async () => {
+  try {
+    const response = await apiClient.get(API_ROUTES.GET_NOTIFICATION_SETTINGS);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const updateNotificationSettings = async (settings) => {
+  try {
+    const response = await apiClient.put(API_ROUTES.UPDATE_NOTIFICATION_SETTINGS, settings);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// User Notification Preferences
+export const getUserNotificationPreferences = async () => {
+  try {
+    const response = await apiClient.get(API_ROUTES.GET_USER_NOTIF_PREFERENCES);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const updateUserNotificationPreferences = async (data) => {
+  try {
+    const response = await apiClient.put(API_ROUTES.UPDATE_USER_NOTIF_PREFERENCES, data);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// FCM Token Management
+export const registerFcmToken = async (data) => {
+  try {
+    const response = await apiClient.post(API_ROUTES.REGISTER_FCM_TOKEN, data);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const removeFcmToken = async (data) => {
+  try {
+    const response = await apiClient.delete(API_ROUTES.REMOVE_FCM_TOKEN, { data });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const removeAllFcmTokens = async () => {
+  try {
+    const response = await apiClient.delete(API_ROUTES.REMOVE_ALL_FCM_TOKENS);
     return response.data;
   } catch (error) {
     throw error;
@@ -677,6 +865,15 @@ export const updateTask = async (id, taskData) => {
 export const updateTaskStatus = async (id, taskData) => {
   try {
     const response = await apiClient.patch(`${API_ROUTES.STATUS_TASK}${id}`, taskData);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const pauseAllRunningTasks = async (employeeId) => {
+  try {
+    const response = await apiClient.patch(`${API_ROUTES.PAUSE_ALL_TASKS}${employeeId}`);
     return response.data;
   } catch (error) {
     throw error;
@@ -1140,6 +1337,71 @@ export const getAllInvoices = async () => {
       params: organizationId ? { organizationId } : {}
     });
 
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// WFH Credit Services
+export const evaluateWfhCredit = async (creditData) => {
+  try {
+    const response = await apiClient.post(API_ROUTES.EVALUATE_WFH_CREDIT, creditData);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getAllWfhCredits = async (month, year) => {
+  try {
+    const organizationId = getOrganizationId();
+    const params = {};
+    if (month) params.month = month;
+    if (year) params.year = year;
+    if (organizationId) params.organizationId = organizationId;
+
+    const response = await apiClient.get(API_ROUTES.GET_ALL_WFH_CREDITS, { params });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getMyWfhCredits = async () => {
+  try {
+    const response = await apiClient.get(API_ROUTES.GET_MY_WFH_CREDITS);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getEmployeeWfhCredits = async (employeeId, month, year) => {
+  try {
+    const params = {};
+    if (month) params.month = month;
+    if (year) params.year = year;
+    const response = await apiClient.get(`${API_ROUTES.GET_EMPLOYEE_WFH_CREDITS}${employeeId}`, { params });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Organization Settings
+export const getOrgSettings = async (orgId) => {
+  try {
+    const response = await apiClient.get(`${API_ROUTES.GET_ORG_SETTINGS}${orgId}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const updateOrgSettings = async (orgId, data) => {
+  try {
+    const response = await apiClient.put(`${API_ROUTES.UPDATE_ORG_SETTINGS}${orgId}`, data);
     return response.data;
   } catch (error) {
     throw error;

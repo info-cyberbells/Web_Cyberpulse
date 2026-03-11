@@ -195,6 +195,11 @@ const AnnouncementManagement = () => {
               <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
                 Created: {format(new Date(announcement.createdAt), "MMM-dd-yyyy")}
               </Typography>
+              {announcement.createdBy?.name && (
+                <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
+                  Posted by: <strong>{announcement.createdBy.name}</strong>
+                </Typography>
+              )}
             </Stack>
           </Box>
           <Box>
@@ -314,7 +319,7 @@ const AnnouncementManagement = () => {
         </DialogContent>
       </Dialog>
 
-      {usertype === 1 && (<Fab
+      {(usertype === 1 || usertype === 4) && (<Fab
         color="primary"
         onClick={() => handleOpenDialog()}
         sx={{ position: "fixed", bottom: 16, right: 16 }}

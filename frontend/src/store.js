@@ -21,6 +21,8 @@ import salarySlipReducer from './features/salarySlip/salarySlipSlice';
 import employeeRatingReducer from './features/employeeRating/employeeRatingSlice';
 import invoiceReducer from "./features/invoice/invoiceSlice";
 import chatReducer from "./features/chat/chatSlice";
+import wfhCreditReducer from "./features/wfhCredit/wfhCreditSlice";
+import notificationReducer from "./features/notifications/notificationSlice";
 import { RESET_APP_STATE } from './features/auth/authSlice';
 
 
@@ -47,6 +49,8 @@ const appReducer = combineReducers({
   employeeRatings: employeeRatingReducer,
   invoice: invoiceReducer,
   chat: chatReducer,
+  wfhCredit: wfhCreditReducer,
+  notifications: notificationReducer,
 });
 
 

@@ -402,6 +402,120 @@ export const deleteTask = async (req, res) => {
 };
 
 
+// Pause all running tasks for an employee (called on clock-out)
+export const pauseAllRunningTasks = async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+
+    const runningTasks = await Task.find({
+      employeeId,
+      status: 'In Progress',
+      isDeleted: false
+    });
+
+    if (!runningTasks.length) {
+      return res.status(200).json({
+        success: true,
+        message: 'No running tasks to pause',
+        data: []
+      });
+    }
+
+    const currentTime = getCurrentISTTime();
+    const pausedTasks = [];
+
+    for (const task of runningTasks) {
+      // Close current work session
+      if (task.workSessions.length > 0) {
+        const currentSession = task.workSessions[task.workSessions.length - 1];
+        if (!currentSession.endTime) {
+          currentSession.endTime = currentTime;
+          currentSession.duration = Math.floor((currentTime - currentSession.startTime) / 1000);
+          task.duration += currentSession.duration;
+        }
+      }
+      task.status = 'Paused';
+      task.pauseTime = currentTime;
+      await task.save();
+      pausedTasks.push(formatTaskResponse(task));
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `${pausedTasks.length} task(s) paused successfully`,
+      data: pausedTasks
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// Fetch Tasks by Project Name
+export const fetchTasksByProject = async (req, res) => {
+  try {
+    const { projectName, organizationId } = req.query;
+
+    if (!projectName) {
+      return res.status(400).json({
+        success: false,
+        message: 'projectName is required',
+      });
+    }
+
+    let query = {
+      projectName: { $regex: new RegExp(`^${projectName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+      isDeleted: false,
+    };
+
+    if (organizationId) {
+      query.organizationId = organizationId;
+    }
+
+    const tasks = await Task.find(query)
+      .populate('employeeId', 'name email image')
+      .sort({ assignedDate: -1 });
+
+    // Group tasks by employee
+    const tasksByEmployee = {};
+    tasks.forEach((task) => {
+      const empId = task.employeeId?._id?.toString() || 'unknown';
+      if (!tasksByEmployee[empId]) {
+        tasksByEmployee[empId] = {
+          employee: task.employeeId,
+          tasks: [],
+        };
+      }
+      tasksByEmployee[empId].tasks.push(formatTaskResponse(task));
+    });
+
+    const summary = {
+      totalTasks: tasks.length,
+      completed: tasks.filter((t) => t.status === 'Completed').length,
+      inProgress: tasks.filter((t) => t.status === 'In Progress').length,
+      pending: tasks.filter((t) => t.status === 'Pending').length,
+      paused: tasks.filter((t) => t.status === 'Paused').length,
+      totalDuration: tasks.reduce((sum, t) => sum + (t.duration || 0), 0),
+    };
+
+    res.status(200).json({
+      success: true,
+      data: {
+        allTasks: tasks.map((task) => formatTaskResponse(task)),
+        tasksByEmployee: Object.values(tasksByEmployee),
+        summary,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 // Get Task Analytics
 export const getTaskAnalytics = async (req, res) => {
   try {

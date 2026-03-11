@@ -70,17 +70,24 @@ const LeaveRequests = () => {
   }, [dispatch]);
 
 
-  const filteredLeaves = leaveList.filter((leave) => {
-    const statusMatch = filterStatus === "all"
-      ? true
-      : leave.status.toLowerCase() === filterStatus.toLowerCase();
+  const filteredLeaves = leaveList
+    .filter((leave) => {
+      const statusMatch = filterStatus === "all"
+        ? true
+        : leave.status.toLowerCase() === filterStatus.toLowerCase();
 
-    const employeeMatch = selectedEmployee === "all"
-      ? true
-      : leave.employeeId?._id === selectedEmployee;
+      const employeeMatch = selectedEmployee === "all"
+        ? true
+        : leave.employeeId?._id === selectedEmployee;
 
-    return statusMatch && employeeMatch;
-  });
+      return statusMatch && employeeMatch;
+    })
+    .sort((a, b) => {
+      const aIsPending = a.status?.toLowerCase() === "pending" ? 0 : 1;
+      const bIsPending = b.status?.toLowerCase() === "pending" ? 0 : 1;
+      if (aIsPending !== bIsPending) return aIsPending - bIsPending;
+      return new Date(b.createdAt || b.startDate) - new Date(a.createdAt || a.startDate);
+    });
 
 
   const uniqueEmployees = leaveList.reduce((acc, leave) => {

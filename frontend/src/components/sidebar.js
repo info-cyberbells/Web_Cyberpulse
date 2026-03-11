@@ -13,6 +13,12 @@ import {
   useMediaQuery,
   Toolbar,
   AppBar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Button,
 } from "@mui/material";
 import {
   Menu as MenuIcon,
@@ -31,7 +37,6 @@ import {
   EventAvailable as EventAvailableIcon,
   Announcement as AnnouncementIcon,
   PersonAdd as PersonAddIcon,
-  QuestionAnswer as QuestionAnswerIcon,
   Person as PersonIcon,
   Payments as PaymentsIcon,
   RequestPage as RequestPageIcon,
@@ -50,18 +55,22 @@ import RequestQuoteIcon from '@mui/icons-material/RequestQuote';
 import ArticleIcon from '@mui/icons-material/Article';
 import { DateRange } from "@mui/icons-material";
 import ChatIcon from '@mui/icons-material/Chat';
+import HomeWorkIcon from '@mui/icons-material/HomeWork';
+import TuneIcon from '@mui/icons-material/Tune';
 import { useNavigate, useLocation } from "react-router-dom";
 import LOGO from "../assets/LOGO.png";
 import SlideshowIcon from '@mui/icons-material/Slideshow';
 import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
 import { Link } from 'react-router-dom';
+import TopNavbar from './TopNavbar';
 
 export const drawerWidth = 260;
 
-const Sidebar = ({ isLoggedIn, onLogout, children, onStartSlideshow }) => {
+const Sidebar = ({ isLoggedIn, onLogout, children, onStartSlideshow, userName, userRole }) => {
   const [open, setOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarItems, setSidebarItems] = useState([]);
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const navigate = useNavigate();
@@ -74,7 +83,7 @@ const Sidebar = ({ isLoggedIn, onLogout, children, onStartSlideshow }) => {
       title: "Dashboard",
       path: "/dashboard",
       icon: <DashboardIcon />,
-      allowedTypes: [2, 3, 4],
+      allowedTypes: [2, 3, 4, 5],
     },
     {
       title: "Attendance",
@@ -135,7 +144,7 @@ const Sidebar = ({ isLoggedIn, onLogout, children, onStartSlideshow }) => {
       title: "Profile",
       path: "/profile",
       icon: <AccountCircleIcon />,
-      allowedTypes: [2, 3, 4],
+      allowedTypes: [2, 3, 4, 5],
     },
     {
       title: "Documents",
@@ -169,7 +178,7 @@ const Sidebar = ({ isLoggedIn, onLogout, children, onStartSlideshow }) => {
       title: "Leave Requests",
       path: "/leave-request",
       icon: <ArticleIcon />,
-      allowedTypes: [1, 3, 4, 5],
+      allowedTypes: [1, 5],
     },
     {
       title: "Monthly Attendence",
@@ -197,12 +206,6 @@ const Sidebar = ({ isLoggedIn, onLogout, children, onStartSlideshow }) => {
       allowedTypes: [4],
     },
 
-    {
-      title: "Suggestions and Complaint",
-      path: "/Suggestion-desk",
-      icon: <QuestionAnswerIcon />,
-      allowedTypes: [4],
-    },
 
 
     {
@@ -243,10 +246,28 @@ const Sidebar = ({ isLoggedIn, onLogout, children, onStartSlideshow }) => {
     },
 
     {
+      title: "WFH Credits",
+      path: "/wfh-credits",
+      icon: <HomeWorkIcon />,
+      allowedTypes: [1, 3, 4, 5],
+    },
+    {
+      title: "My WFH Credits",
+      path: "/my-wfh-credits",
+      icon: <HomeWorkIcon />,
+      allowedTypes: [2],
+    },
+    {
       title: "Chat",
       path: "/chat",
       icon: <ChatIcon />,
       allowedTypes: [1, 2, 3, 4, 5],
+    },
+    {
+      title: "Settings",
+      path: "/settings",
+      icon: <TuneIcon />,
+      allowedTypes: [1, 3, 4, 5],
     },
 
     {
@@ -283,7 +304,7 @@ const Sidebar = ({ isLoggedIn, onLogout, children, onStartSlideshow }) => {
         const specificUserId = "68511c6bd5ab9a8291429ac5";
         const currentUserId = parsedUser.employee.id;
 
-        const filteredItems = allSidebarItems.filter(item =>
+        let filteredItems = allSidebarItems.filter(item =>
           item.allowedTypes.includes(userType)
         );
 
@@ -292,6 +313,94 @@ const Sidebar = ({ isLoggedIn, onLogout, children, onStartSlideshow }) => {
             title: "Active Employees",
             path: "/active-employees",
             icon: <GroupIcon />,
+          });
+        }
+
+        // HR (type 4) priority ordering
+        if (userType === 4) {
+          const hrPriorityOrder = [
+            "/dashboard",
+            "/active-employees",
+            "/add-employee",
+            "/attendance",
+            "/monthly-data",
+            "/leave",
+            "/task",
+            "/holidays",
+            "/annoucement",
+            "/event",
+            "/wfh-credits",
+            "/get-all-requests",
+            "/salary-slips",
+            "/help-desk",
+            "/add-file",
+            "/profile",
+            "/settings",
+            "/chat",
+          ];
+          filteredItems.sort((a, b) => {
+            const aIndex = hrPriorityOrder.indexOf(a.path);
+            const bIndex = hrPriorityOrder.indexOf(b.path);
+            return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
+          });
+        }
+
+        // TL (type 3) priority ordering
+        if (userType === 3) {
+          const tlPriorityOrder = [
+            "/dashboard",
+            "/active-employees",
+            "/attendance",
+            "/task",
+            "/projects",
+            "/add-employee",
+            "/leave",
+            "/monthly-data",
+            "/annoucement",
+            "/event",
+            "/holidays",
+            "/wfh-credits",
+            "/help-desk",
+            "/advance-salary",
+            "/add-technology",
+            "/employee-documents",
+            "/employee-handbook",
+            "/profile",
+            "/chat",
+            "/settings",
+          ];
+          filteredItems.sort((a, b) => {
+            const aIndex = tlPriorityOrder.indexOf(a.path);
+            const bIndex = tlPriorityOrder.indexOf(b.path);
+            return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
+          });
+        }
+
+        // Manager (type 5) priority ordering
+        if (userType === 5) {
+          const managerPriorityOrder = [
+            "/dashboard",
+            "/attendance",
+            "/monthly-data",
+            "/projects",
+            "/add-employee",
+            "/leave-request",
+            "/annoucement",
+            "/event",
+            "/holidays",
+            "/wfh-credits",
+            "/get-all-requests",
+            "/add-technology",
+            "/add-file",
+            "/Archive",
+            "/help-desk",
+            "/chat",
+            "/settings",
+          ];
+          filteredItems.sort((a, b) => {
+            const aIndex = managerPriorityOrder.indexOf(a.path);
+            const bIndex = managerPriorityOrder.indexOf(b.path);
+            return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
           });
         }
 
@@ -375,19 +484,21 @@ const Sidebar = ({ isLoggedIn, onLogout, children, onStartSlideshow }) => {
             />
           </Link>
         </Box>
-        <IconButton
-          onClick={handleDrawerToggle}
-          sx={{
-            color: "white",
-            position: isMobile ? "static" : open ? "relative" : "absolute",
-            right: !isMobile && !open ? "12px" : "auto",
-            "&:hover": {
-              backgroundColor: "rgba(255, 255, 255, 0.08)",
-            },
-          }}
-        >
-          {open ? <MenuOpenIcon /> : <MenuIcon />}
-        </IconButton>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+          <IconButton
+            onClick={handleDrawerToggle}
+            sx={{
+              color: "white",
+              position: isMobile ? "static" : open ? "relative" : "absolute",
+              right: !isMobile && !open ? "12px" : "auto",
+              "&:hover": {
+                backgroundColor: "rgba(255, 255, 255, 0.08)",
+              },
+            }}
+          >
+            {open ? <MenuOpenIcon /> : <MenuIcon />}
+          </IconButton>
+        </Box>
       </Toolbar>
 
       <Divider />
@@ -457,7 +568,7 @@ const Sidebar = ({ isLoggedIn, onLogout, children, onStartSlideshow }) => {
       <Box sx={{ p: 0 }}>
         <Divider sx={{ mb: 2 }} />
         <ListItemButton
-          onClick={onLogout}
+          onClick={() => setLogoutDialogOpen(true)}
           sx={{
             borderRadius: 1,
             "&:hover": {
@@ -521,6 +632,7 @@ const Sidebar = ({ isLoggedIn, onLogout, children, onStartSlideshow }) => {
                 width: "100px",
               }}
             />
+            <Box sx={{ flexGrow: 1 }} />
           </Toolbar>
         </AppBar>
       )}
@@ -570,27 +682,73 @@ const Sidebar = ({ isLoggedIn, onLogout, children, onStartSlideshow }) => {
         {drawerContent}
       </Drawer>
 
+      {/* Top Navbar */}
+      <TopNavbar
+        onLogout={onLogout}
+        userName={userName}
+        userRole={userRole}
+        sidebarOpen={open}
+        isMobile={isMobile}
+      />
+
       {/* Main content */}
       <Box
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
           width: {
             md: `calc(100% - ${open ? drawerWidth : theme.spacing(9)}px)`,
           },
           marginLeft: {
             md: open ? `${drawerWidth}px` : `${theme.spacing(9)}px`,
           },
-          marginTop: isMobile ? "64px" : 0,
+          marginTop: isMobile ? "116px" : "52px",
           transition: theme.transitions.create(["margin", "width"], {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.enteringScreen,
           }),
+          p: 3,
         }}
       >
         {children}
       </Box>
+
+      {/* Logout Confirmation Dialog */}
+
+      <Dialog
+        open={logoutDialogOpen}
+        onClose={() => setLogoutDialogOpen(false)}
+        PaperProps={{
+          sx: { borderRadius: 3, px: 1, py: 0.5 },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>Confirm Logout</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to logout?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ pb: 2, px: 3 }}>
+          <Button
+            onClick={() => setLogoutDialogOpen(false)}
+            variant="outlined"
+            sx={{ borderRadius: 2, textTransform: "none" }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              setLogoutDialogOpen(false);
+              onLogout();
+            }}
+            variant="contained"
+            color="error"
+            sx={{ borderRadius: 2, textTransform: "none" }}
+          >
+            Logout
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

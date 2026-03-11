@@ -173,6 +173,15 @@ const EventItem = ({
                 </Box>
               )}
 
+              {event.createdBy?.name && (
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <PersonIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                  <Typography variant="body2" color="text.secondary">
+                    Posted by: <strong>{event.createdBy.name}</strong>
+                  </Typography>
+                </Stack>
+              )}
+
               <Stack direction="row" spacing={1} flexWrap="wrap">
                 <EventTypeChip
                   label={event.eventType.charAt(0).toUpperCase() + event.eventType.slice(1).toLowerCase()}

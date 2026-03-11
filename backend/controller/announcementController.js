@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import Organization from '../model/organizationModel.js';
 import Announcement from '../model/announcementModel.js';
 import Employee from "../model/employeeModel.js";
+import { createNotificationForAll } from "../helpers/createNotification.js";
 
 // Create Announcement
 export const addAnnouncement = async (req, res) => {
@@ -32,6 +33,18 @@ export const addAnnouncement = async (req, res) => {
     });
 
     const savedAnnouncement = await newAnnouncement.save();
+
+    // Notify all employees about new announcement
+    if (organizationId && createdBy) {
+      createNotificationForAll("announcement_added", {
+        triggeredBy: createdBy,
+        organizationId,
+        title: "New Announcement",
+        message: `New ${type} announcement: "${description.substring(0, 80)}${description.length > 80 ? '...' : ''}"`,
+        resourceId: savedAnnouncement._id,
+        resourceType: "announcement",
+      });
+    }
 
     const responseAnnouncement = {
       _id: savedAnnouncement._id,

@@ -1,6 +1,8 @@
 import Message from '../model/MessageModel.js';
 import Conversation from '../model/ConversationModel.js';
 import { CHAT_CONSTANTS } from '../utils/chatConstants.js';
+import { sendPushToMultipleUsers } from '../helpers/sendPushNotification.js';
+import UserNotificationPreference from '../model/UserNotificationPreferenceModel.js';
 
 export const getMessages = async (req, res) => {
   try {
@@ -104,9 +106,64 @@ export const sendMessage = async (req, res) => {
       .populate('senderId', 'name email image')
       .populate({ path: 'replyTo', select: 'content senderId type', populate: { path: 'senderId', select: 'name email image' } });
 
+    // Send FCM push notification to other participants
+    sendChatPushNotification(
+      senderId,
+      conversation.participants,
+      populated,
+      conversation
+    ).catch(err => console.error('Chat FCM push error:', err));
+
     return res.status(201).json({ success: true, data: populated });
   } catch (error) {
     console.error('sendMessage error:', error);
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+async function sendChatPushNotification(senderId, participants, populatedMessage, conversation) {
+  try {
+    const recipientIds = participants
+      .map(p => p.toString())
+      .filter(pid => pid !== senderId);
+
+    if (recipientIds.length === 0) return;
+
+    const userPrefs = await UserNotificationPreference.find({
+      userId: { $in: recipientIds },
+    });
+
+    const prefsMap = new Map();
+    userPrefs.forEach(p => prefsMap.set(p.userId.toString(), p));
+
+    const pushEligible = recipientIds.filter(id => {
+      const pref = prefsMap.get(id);
+      if (!pref) return true;
+      if (!pref.pushEnabled) return false;
+      if (pref.preferences?.chat_message === false) return false;
+      return true;
+    });
+
+    if (pushEligible.length === 0) return;
+
+    const senderName = populatedMessage.senderId?.name || 'Someone';
+    const isGroup = conversation.type === 'group';
+    const title = isGroup ? (conversation.name || 'Group Chat') : senderName;
+
+    let body;
+    if (populatedMessage.content) {
+      body = isGroup ? `${senderName}: ${populatedMessage.content.substring(0, 100)}` : populatedMessage.content.substring(0, 100);
+    } else if (populatedMessage.attachments?.length > 0) {
+      body = isGroup ? `${senderName}: Sent an attachment` : 'Sent an attachment';
+    } else {
+      body = 'New message';
+    }
+
+    await sendPushToMultipleUsers(pushEligible, title, body, {
+      type: 'chat_message',
+      conversationId: conversation._id.toString(),
+    });
+  } catch (error) {
+    console.error('Error sending chat push notification:', error);
+  }
+}

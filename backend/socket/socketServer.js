@@ -14,9 +14,17 @@ import Conversation from '../model/ConversationModel.js';
 let io;
 
 export const initializeSocketServer = (httpServer) => {
+  const rawOrigin = process.env.SOCKET_CORS_ORIGIN || '*';
+  const corsOrigin = rawOrigin.includes(',') ? rawOrigin.split(',').map(o => o.trim()) : rawOrigin;
+
+  console.log('====================================');
+  console.log('  Socket.IO Server Initializing...');
+  console.log(`  CORS Allowed Origins: ${Array.isArray(corsOrigin) ? corsOrigin.join(' | ') : corsOrigin}`);
+  console.log('====================================');
+
   io = new Server(httpServer, {
     cors: {
-      origin: process.env.SOCKET_CORS_ORIGIN || '*',
+      origin: corsOrigin,
       methods: ['GET', 'POST'],
     },
     pingTimeout: 60000,

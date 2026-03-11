@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { addProject, deleteProject, editProject, listProjects } from '../../services/services';
+import { addProject, deleteProject, editProject, listProjects, getProjectDetail, fetchTasksByProject } from '../../services/services';
 
 // Async Thunks for API calls
 
@@ -56,10 +56,39 @@ export const removeProject = createAsyncThunk(
   }
 );
 
+// Fetch single project detail
+export const fetchProjectDetail = createAsyncThunk(
+  'projects/fetchProjectDetail',
+  async (projectId, { rejectWithValue }) => {
+    try {
+      const response = await getProjectDetail(projectId);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+// Fetch tasks for a project
+export const fetchProjectTasks = createAsyncThunk(
+  'projects/fetchProjectTasks',
+  async (projectName, { rejectWithValue }) => {
+    try {
+      const response = await fetchTasksByProject(projectName);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
 // Initial state
 const initialState = {
   projects: [],
+  currentProject: null,
+  projectTasks: null,
   loading: false,
+  detailLoading: false,
   error: null,
   successMessage: null,
 };
@@ -74,6 +103,10 @@ const projectSlice = createSlice({
     },
     clearError: (state) => {
       state.error = null;
+    },
+    clearCurrentProject: (state) => {
+      state.currentProject = null;
+      state.projectTasks = null;
     },
   },
   extraReducers: (builder) => {
@@ -143,9 +176,38 @@ const projectSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       });
+
+    // Handle fetchProjectDetail
+    builder
+      .addCase(fetchProjectDetail.pending, (state) => {
+        state.detailLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchProjectDetail.fulfilled, (state, action) => {
+        state.detailLoading = false;
+        state.currentProject = action.payload;
+      })
+      .addCase(fetchProjectDetail.rejected, (state, action) => {
+        state.detailLoading = false;
+        state.error = action.payload;
+      });
+
+    // Handle fetchProjectTasks
+    builder
+      .addCase(fetchProjectTasks.pending, (state) => {
+        state.detailLoading = true;
+      })
+      .addCase(fetchProjectTasks.fulfilled, (state, action) => {
+        state.detailLoading = false;
+        state.projectTasks = action.payload;
+      })
+      .addCase(fetchProjectTasks.rejected, (state, action) => {
+        state.detailLoading = false;
+        state.error = action.payload;
+      });
   },
 });
-export const { clearSuccessMessage, clearError } = projectSlice.actions;
+export const { clearSuccessMessage, clearError, clearCurrentProject } = projectSlice.actions;
 export const selectProjects = (state) => state.projects.projects;
 export const selectProjectsLoading = (state) => state.projects.loading;
 export const selectProjectsError = (state) => state.projects.error;

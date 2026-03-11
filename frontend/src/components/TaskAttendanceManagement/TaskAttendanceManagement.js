@@ -10,10 +10,16 @@ import {
   Tab,
 } from "@mui/material";
 import {
+  Chip,
+} from "@mui/material";
+import {
   Add as AddIcon,
   Close as CloseIcon,
   PlayArrow as PlayIcon,
   History as HistoryIcon,
+  Assignment as AssignmentIcon,
+  EventNote as EventNoteIcon,
+  AccessTime as AccessTimeIcon,
 } from "@mui/icons-material";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -99,20 +105,30 @@ const TaskAttendanceManagement = ({
 
   useEffect(() => {
     const initialTimers = {};
+    const isClockedOut = !!clockOutData || currentAttendance?.Employeestatus === "clocked out";
+
     tasks.forEach((task) => {
-      if (task.status === TaskStatus.IN_PROGRESS && currentAttendance?.Employeestatus !== "on break") {
+      if (task.status === TaskStatus.IN_PROGRESS && currentAttendance?.Employeestatus !== "on break" && !isClockedOut) {
         setActiveTaskId(task._id);
 
-        // Calculate time elapsed since last update
-        const lastUpdateTime = new Date(task.updatedAt || task.startTime || task.createdAt).getTime();
-        const currentTime = Date.now();
-        const timeElapsedWhileClosed = Math.floor((currentTime - lastUpdateTime) / 1000);
-        const totalDurationWithClosedTime = (task.duration || 0) + timeElapsedWhileClosed;
+        // Calculate time elapsed since the last work session started
+        // Use the last work session's startTime for accurate calculation
+        let elapsedFromSession = 0;
+        if (task.workSessions && task.workSessions.length > 0) {
+          const lastSession = task.workSessions[task.workSessions.length - 1];
+          if (lastSession.startTime && !lastSession.endTime) {
+            const sessionStart = new Date(lastSession.startTime).getTime();
+            elapsedFromSession = Math.max(0, Math.floor((Date.now() - sessionStart) / 1000));
+          }
+        }
+
+        // Backend duration has accumulated past sessions, add current running session elapsed
+        const totalDurationWithClosedTime = (task.duration || 0) + elapsedFromSession;
 
         initialTimers[task._id] = {
-          startTime: Date.now(), // Start fresh from now
+          startTime: Date.now(),
           isRunning: true,
-          totalDuration: totalDurationWithClosedTime, // Include time when page was closed
+          totalDuration: totalDurationWithClosedTime,
           previousDuration: totalDurationWithClosedTime,
         };
       } else {
@@ -123,13 +139,13 @@ const TaskAttendanceManagement = ({
           previousDuration: task.duration || 0,
         };
 
-        if (currentAttendance?.Employeestatus === "on break") {
+        if (currentAttendance?.Employeestatus === "on break" || isClockedOut) {
           setActiveTaskId(null);
         }
       }
     });
     setTaskTimers(initialTimers);
-  }, [tasks, currentAttendance?.Employeestatus]);
+  }, [tasks, currentAttendance?.Employeestatus, clockOutData]);
 
   useEffect(() => {
     if (!clockInData?._id) return;
@@ -205,6 +221,28 @@ const TaskAttendanceManagement = ({
     }
   }, [currentAttendance?.Employeestatus, localTasks]);
 
+  // When employee clocks out, stop all timers and refresh task list
+  useEffect(() => {
+    if (clockOutData) {
+      // Stop all running timers
+      setTaskTimers(prev => {
+        const updated = { ...prev };
+        Object.keys(updated).forEach(taskId => {
+          if (updated[taskId].isRunning) {
+            updated[taskId] = {
+              ...updated[taskId],
+              isRunning: false,
+              previousDuration: updated[taskId].totalDuration
+            };
+          }
+        });
+        return updated;
+      });
+      setActiveTaskId(null);
+      // Refresh tasks to get updated durations from backend
+      loadAllTasks();
+    }
+  }, [clockOutData]);
 
   useEffect(() => {
     if (showTaskInput || editModalVisible || projects.length === 0) {
@@ -419,7 +457,12 @@ const TaskAttendanceManagement = ({
             .toISOString()
             .split("T")[0];
 
-          return taskDate !== today && task.status === TaskStatus.PENDING;
+          // Show Pending, Paused, and In Progress tasks from previous dates
+          return taskDate !== today && (
+            task.status === TaskStatus.PENDING ||
+            task.status === TaskStatus.PAUSED ||
+            task.status === TaskStatus.IN_PROGRESS
+          );
         });
         dispatch(setPreviousTasks(filteredPreviousTasks));
       }
@@ -818,7 +861,7 @@ const TaskAttendanceManagement = ({
   );
   return (
     <Box sx={{ width: "100%" }}>
-      <Paper sx={{ p: 3 }}>
+      <Paper sx={{ p: 3, borderRadius: '16px', boxShadow: '0 2px 16px rgba(0,0,0,0.06)' }}>
         <Stack
           direction="row"
           justifyContent="space-between"
@@ -886,12 +929,36 @@ const TaskAttendanceManagement = ({
               }}
             >
               <StyledTab
-                label="Today's Tasks"
+                label={
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <span>Today's Tasks</span>
+                    {localTasks.length > 0 && (
+                      <Chip
+                        label={localTasks.length}
+                        size="small"
+                        color="primary"
+                        sx={{ height: 20, fontSize: '0.7rem', fontWeight: 700, minWidth: 28 }}
+                      />
+                    )}
+                  </Stack>
+                }
                 icon={<PlayIcon />}
                 iconPosition="start"
               />
               <StyledTab
-                label="Pending Tasks"
+                label={
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <span>Previous Tasks</span>
+                    {previousTasks.length > 0 && (
+                      <Chip
+                        label={previousTasks.length}
+                        size="small"
+                        color="warning"
+                        sx={{ height: 20, fontSize: '0.7rem', fontWeight: 700, minWidth: 28 }}
+                      />
+                    )}
+                  </Stack>
+                }
                 icon={<HistoryIcon />}
                 iconPosition="start"
               />
@@ -922,22 +989,45 @@ const TaskAttendanceManagement = ({
                   />
                 ))}
                 {!isLoading && localTasks.length === 0 && (
-                  <Typography color="text.secondary" textAlign="center">
-                    No tasks found for today
-                  </Typography>
+                  <Box sx={{ textAlign: 'center', py: 6 }}>
+                    <AssignmentIcon sx={{ fontSize: 56, color: 'grey.300', mb: 1.5 }} />
+                    <Typography variant="h6" color="text.secondary" fontWeight={500}>
+                      No tasks for today
+                    </Typography>
+                    <Typography variant="body2" color="text.disabled" sx={{ mt: 0.5 }}>
+                      Click "New Task" to add your first task
+                    </Typography>
+                  </Box>
                 )}
               </Stack>
             ) : (
               <Stack spacing={3}>
                 {Object.entries(groupedPreviousTasks).map(([date, tasks]) => (
                   <Box key={date}>
-                    <Typography
-                      variant="h6"
-                      color="text.secondary"
-                      sx={{ mb: 2 }}
+                    <Box
+                      sx={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        px: 1.5,
+                        py: 0.5,
+                        mb: 2,
+                        borderRadius: '8px',
+                        bgcolor: 'grey.50',
+                        border: '1px solid',
+                        borderColor: 'grey.200',
+                      }}
                     >
-                      {date}
-                    </Typography>
+                      <EventNoteIcon sx={{ fontSize: '1rem', color: 'text.secondary' }} />
+                      <Typography variant="subtitle2" color="text.secondary" fontWeight={600}>
+                        {date}
+                      </Typography>
+                      <Chip
+                        label={tasks.length}
+                        size="small"
+                        sx={{ height: 18, fontSize: '0.65rem', fontWeight: 700, minWidth: 22 }}
+                      />
+                    </Box>
                     <Stack spacing={2}>
                       {tasks.map((task) => (
                         <TaskCard
@@ -962,17 +1052,29 @@ const TaskAttendanceManagement = ({
                   </Box>
                 ))}
                 {!isLoading && Object.keys(groupedPreviousTasks).length === 0 && (
-                  <Typography color="text.secondary" textAlign="center">
-                    No previous tasks found
-                  </Typography>
+                  <Box sx={{ textAlign: 'center', py: 6 }}>
+                    <EventNoteIcon sx={{ fontSize: 56, color: 'grey.300', mb: 1.5 }} />
+                    <Typography variant="h6" color="text.secondary" fontWeight={500}>
+                      No previous tasks
+                    </Typography>
+                    <Typography variant="body2" color="text.disabled" sx={{ mt: 0.5 }}>
+                      All your past tasks have been completed
+                    </Typography>
+                  </Box>
                 )}
               </Stack>
             )}
           </Box>
         ) : (
-          <Typography color="text.secondary" textAlign="center">
-            Please clock in to view and manage tasks
-          </Typography>
+          <Box sx={{ textAlign: 'center', py: 8 }}>
+            <AccessTimeIcon sx={{ fontSize: 64, color: 'grey.300', mb: 2 }} />
+            <Typography variant="h6" color="text.secondary" fontWeight={500}>
+              Clock in to get started
+            </Typography>
+            <Typography variant="body2" color="text.disabled" sx={{ mt: 0.5 }}>
+              You need to clock in before managing tasks
+            </Typography>
+          </Box>
         )}
       </Paper>
 

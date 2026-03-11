@@ -24,16 +24,22 @@ import {
   Grid,
   Alert,
   Snackbar,
+  Avatar,
+  Tooltip,
 } from '@mui/material';
 import {
   AccessTime as AccessTimeIcon,
   Person as PersonIcon,
-  AssignmentTurnedIn as ComplaintIcon,
   Close as CloseIcon,
   FilterList as FilterListIcon,
   ClearAll as ClearAllIcon,
+  CheckCircle as CheckCircleIcon,
+  HourglassEmpty as PendingIcon,
+  Autorenew as InProgressIcon,
+  ExpandMore as ExpandMoreIcon,
+  Visibility as ViewIcon,
 } from '@mui/icons-material';
-import { format, parseISO, isAfter, isBefore, isEqual } from 'date-fns';
+import { format } from 'date-fns';
 import { styled } from "@mui/material/styles";
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -45,7 +51,6 @@ import {
 } from '../features/helpDesk/helpSlice';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 
-
 const HeaderCard = styled(Card)(({ theme }) => ({
   background: "#ffffff",
   marginBottom: theme.spacing(3),
@@ -54,400 +59,234 @@ const HeaderCard = styled(Card)(({ theme }) => ({
   border: "1px solid #e5e7eb",
 }));
 
-
-// Color utilities
-const ticketTypeColors = {
-  complaint: {
-    background: theme => theme.palette.error.main,
-    text: 'white',
-  },
-  feedback: {
-    background: theme => theme.palette.success.main,
-    text: 'white',
-  },
-  suggestion: {
-    background: theme => theme.palette.info.main,
-    text: 'white',
-  },
-  query: {
-    background: theme => theme.palette.warning.main,
-    text: 'white',
-  },
-  other: {
-    background: theme => theme.palette.grey[600],
-    text: 'white',
-  }
+// Type colors
+const typeConfig = {
+  complaint: { bg: '#fef2f2', color: '#dc2626', border: '#fecaca', label: 'Complaint' },
+  feedback: { bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0', label: 'Feedback' },
+  suggestion: { bg: '#eff6ff', color: '#2563eb', border: '#bfdbfe', label: 'Suggestion' },
+  'hr support/request': { bg: '#faf5ff', color: '#9333ea', border: '#e9d5ff', label: 'HR Support' },
+  query: { bg: '#fffbeb', color: '#d97706', border: '#fde68a', label: 'Query' },
 };
 
-// Status chip colors
-const statusColors = {
-  pending: {
-    background: theme => theme.palette.warning.main,
-    text: 'white',
-  },
-  'in-progress': {
-    background: theme => theme.palette.info.main,
-    text: 'white',
-  },
-  resolved: {
-    background: theme => theme.palette.success.main,
-    text: 'white',
-  },
+const getTypeConfig = (type) => {
+  return typeConfig[type?.toLowerCase()] || { bg: '#f3f4f6', color: '#6b7280', border: '#e5e7eb', label: type || 'Other' };
 };
 
-const getTypeStyle = (type) => {
-  const typeColor = ticketTypeColors[type.toLowerCase()] || ticketTypeColors.other;
-  return {
-    position: 'absolute',
-    top: -12,
-    left: 20,
-    backgroundColor: typeColor.background,
-    color: typeColor.text,
-    px: 2,
-    py: 0.5,
-    borderRadius: '4px',
-    fontSize: '0.75rem',
-    fontWeight: 'bold',
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.15)',
-  };
+// Status config
+const statusConfig = {
+  pending: { bg: '#fffbeb', color: '#d97706', border: '#fde68a', icon: <PendingIcon fontSize="small" />, label: 'Pending' },
+  'in-progress': { bg: '#eff6ff', color: '#2563eb', border: '#bfdbfe', icon: <InProgressIcon fontSize="small" />, label: 'In Progress' },
+  resolved: { bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0', icon: <CheckCircleIcon fontSize="small" />, label: 'Resolved' },
 };
 
-const getStatusBoxStyle = (isAnonymous = false) => ({
-  p: 1,
-  borderRadius: 1,
-});
+const getStatusConfig = (status) => {
+  return statusConfig[status?.toLowerCase()] || statusConfig.pending;
+};
 
-// Status component
-const StatusChip = ({ status, onStatusChange, ticketId, dispatch }) => {
+// Detail modal
+const TicketDetailModal = ({ ticket, open, onClose, onStatusChange, dispatch }) => {
   const [updating, setUpdating] = useState(false);
-  const [showOptions, setShowOptions] = useState(false);
-  const [error, setError] = useState(null);
+  const tc = getTypeConfig(ticket?.type);
+  const sc = getStatusConfig(ticket?.status);
 
-
-  console.log("StatusChip received ticketId:", ticketId);
-
-
-  const handleStatusChange = async (newStatus) => {
-    if (newStatus === status) {
-      setShowOptions(false);
-      return;
-    }
-
-    console.log("Updating status for ticket ID:", ticketId);
+  const handleStatusUpdate = async (newStatus) => {
+    if (newStatus === ticket.status) return;
     setUpdating(true);
-
     try {
-      await dispatch(updateTicketStatus({
-        ticketId,
-        status: newStatus
-      })).unwrap();
-
-      onStatusChange(ticketId, newStatus);
-      setShowOptions(false);
+      await dispatch(updateTicketStatus({ ticketId: ticket.ticketId, status: newStatus })).unwrap();
+      onStatusChange(ticket.ticketId, newStatus);
     } catch (err) {
-      setError('Failed to update status');
       console.error('Error updating status:', err);
     } finally {
       setUpdating(false);
     }
   };
 
-  const statusColor = statusColors[status] || statusColors.pending;
+  if (!ticket) return null;
 
   return (
-    <>
-      {showOptions ? (
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          {Object.keys(statusColors).map((statusOption) => (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+      <DialogTitle sx={{ pb: 1 }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <Typography variant="h6" fontWeight={700}>Ticket #{ticket.ticketId}</Typography>
             <Chip
-              key={statusOption}
-              label={statusOption.charAt(0).toUpperCase() + statusOption.slice(1)}
-              onClick={() => handleStatusChange(statusOption)}
-              sx={{
-                backgroundColor: statusColors[statusOption].background,
-                color: statusColors[statusOption].text,
-                cursor: 'pointer',
-                '&:hover': {
-                  opacity: 0.9,
-                },
-              }}
+              label={tc.label}
               size="small"
+              sx={{ bgcolor: tc.bg, color: tc.color, border: `1px solid ${tc.border}`, fontWeight: 600, fontSize: '0.75rem' }}
             />
-          ))}
-          <IconButton size="small" onClick={() => setShowOptions(false)}>
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        </Box>
-      ) : (
-        <Chip
-          label={status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Pending'}
-          sx={{
-            backgroundColor: statusColor.background,
-            color: statusColor.text,
-            cursor: 'pointer',
-            '&:hover': {
-              opacity: 0.9,
-            },
-          }}
-          onClick={() => setShowOptions(true)}
-          size="small"
-        />
-      )}
-      {error && <Typography color="error" variant="caption">{error}</Typography>}
-    </>
-  );
-};
+          </Stack>
+          <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
+        </Stack>
+      </DialogTitle>
 
-// Updated component for handling description with modal
-const ExpandableDescription = ({ ticket, onStatusChange }) => {
-  const [openModal, setOpenModal] = useState(false);
-  const maxLength = 90;
-
-  const handleOpenModal = () => setOpenModal(true);
-  const handleCloseModal = () => setOpenModal(false);
-
-  const needsExpansion = ticket.description.length > maxLength;
-  const displayText = needsExpansion ?
-    `${ticket.description.slice(0, maxLength)}...` :
-    ticket.description;
-
-  return (
-    <>
-      <Typography
-        sx={{
-          color: 'text.secondary',
-          fontSize: '0.95rem',
-          lineHeight: 1.6,
-          backgroundColor: 'rgba(0, 0, 0, 0.02)',
-          p: 2,
-          borderRadius: 2,
-          border: '1px solid rgba(0, 0, 0, 0.05)',
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word'
-        }}
-      >
-        {displayText}
-      </Typography>
-
-      {needsExpansion && (
-        <Button
-          onClick={handleOpenModal}
-          size="small"
-          sx={{
-            mt: 1,
-            color: 'primary.main',
-            '&:hover': {
-              backgroundColor: 'rgba(0, 0, 0, 0.04)'
-            },
-            textDecoration: 'underline'
-          }}
-        >
-          View More
-        </Button>
-      )}
-
-      <Dialog
-        open={openModal}
-        onClose={handleCloseModal}
-        maxWidth="md"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 2,
-            maxHeight: '80vh'
-          }
-        }}
-      >
-        <DialogTitle>
-          <Box display="flex" justifyContent="space-between" alignItems="center">
-            <Box display="flex" alignItems="center" gap={1}>
-              <Typography variant="h5" component="div">
-                {ticket.type.charAt(0).toUpperCase() + ticket.type.slice(1)} Details
-              </Typography>
-              <Chip
-                label={`#${ticket.ticketId}`}
-                color="primary"
-                size="small"
-              />
-            </Box>
-            <IconButton onClick={handleCloseModal}>
-              <CloseIcon />
-            </IconButton>
-          </Box>
-        </DialogTitle>
-
-        <DialogContent dividers>
-          <Stack spacing={3}>
-            <Box>
-              <Typography variant="h6" color="text.secondary" gutterBottom>
-                Description
-              </Typography>
-              <Typography
-                sx={{
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
-                  backgroundColor: 'rgba(0, 0, 0, 0.02)',
-                  p: 2,
-                  borderRadius: 1,
-                  border: '1px solid rgba(0, 0, 0, 0.05)',
-                }}
-              >
+      <DialogContent>
+        <Stack spacing={3} sx={{ pt: 1 }}>
+          {/* Description */}
+          <Box>
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom>Description</Typography>
+            <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: '#fafafa' }}>
+              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.7 }}>
                 {ticket.description}
               </Typography>
-            </Box>
+            </Paper>
+          </Box>
 
-            <Box>
-              <Typography variant="h6" color="text.secondary" gutterBottom>
-                Status
-              </Typography>
-              <StatusChip
-                status={ticket.status}
-                onStatusChange={onStatusChange}
-                ticketId={ticket.ticketId}
-              />
-            </Box>
-
-            <Box>
-              <Typography variant="h6" color="text.secondary" gutterBottom>
-                Details
-              </Typography>
-              <Stack spacing={2}>
-                <Box display="flex" alignItems="center" gap={1}>
-                  <AccessTimeIcon color="primary" fontSize="small" />
-                  <Typography variant="body2">
-                    Created on: {format(new Date(ticket.createdAt), 'MMMM dd, yyyy')}
-                  </Typography>
-                </Box>
-                <Box display="flex" alignItems="center" gap={1}>
-                  <PersonIcon
-                    fontSize="small"
-                    color={ticket.anonymous ? "secondary" : "success"}
-                  />
-                  <Typography variant="body2">
-                    Submitted by: {ticket.employeeId?.name || (ticket.anonymous ? 'Anonymous' : 'Unassigned')}
-                  </Typography>
-                </Box>
+          {/* Info */}
+          <Grid container spacing={2}>
+            <Grid item xs={6}>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>Submitted By</Typography>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Avatar sx={{ width: 28, height: 28, fontSize: '0.75rem', bgcolor: ticket.anonymous ? '#9333ea' : '#2563eb' }}>
+                  {ticket.anonymous ? '?' : (ticket.employeeId?.name?.charAt(0) || 'U')}
+                </Avatar>
+                <Typography variant="body2" fontWeight={600}>
+                  {ticket.anonymous ? 'Anonymous' : (ticket.employeeId?.name || 'Unknown')}
+                </Typography>
               </Stack>
-            </Box>
-          </Stack>
-        </DialogContent>
+            </Grid>
+            <Grid item xs={6}>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>Created On</Typography>
+              <Typography variant="body2" fontWeight={500}>
+                {format(new Date(ticket.createdAt), 'MMM dd, yyyy • hh:mm a')}
+              </Typography>
+            </Grid>
+          </Grid>
 
-        <DialogActions sx={{ p: 2 }}>
-          <Button
-            onClick={handleCloseModal}
-            variant="contained"
-          >
-            Close
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </>
+          {/* Status Update */}
+          <Box>
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom>Update Status</Typography>
+            <Stack direction="row" spacing={1.5}>
+              {Object.entries(statusConfig).map(([key, cfg]) => (
+                <Button
+                  key={key}
+                  variant={ticket.status === key ? 'contained' : 'outlined'}
+                  startIcon={cfg.icon}
+                  onClick={() => handleStatusUpdate(key)}
+                  disabled={updating}
+                  size="small"
+                  sx={{
+                    flex: 1,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    fontSize: '0.8rem',
+                    borderRadius: 2,
+                    py: 1,
+                    ...(ticket.status === key
+                      ? { bgcolor: cfg.color, color: 'white', '&:hover': { bgcolor: cfg.color, opacity: 0.9 } }
+                      : { borderColor: cfg.border, color: cfg.color, '&:hover': { bgcolor: cfg.bg, borderColor: cfg.color } }
+                    ),
+                  }}
+                >
+                  {cfg.label}
+                </Button>
+              ))}
+            </Stack>
+          </Box>
+        </Stack>
+      </DialogContent>
+
+      <DialogActions sx={{ p: 2.5, pt: 1 }}>
+        <Button onClick={onClose} variant="outlined" sx={{ textTransform: 'none', borderRadius: 2 }}>Close</Button>
+      </DialogActions>
+    </Dialog>
   );
 };
 
-// Filter component
+// Filter bar
 const TicketFilters = ({ filters, onFilterChange, onClearFilters }) => {
   const handleChange = (event) => {
     const { name, value } = event.target;
     onFilterChange(name, value);
   };
 
+  const hasActiveFilters = Object.values(filters).some(v => v !== '');
+
   return (
-    <Paper sx={{ p: 3, mb: 3, borderRadius: 2, boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.05)' }}>
-      <Box display="flex" alignItems="center" mb={2}>
-        <FilterListIcon sx={{ mr: 1 }} />
-        <Typography variant="h6">Filter Tickets</Typography>
-      </Box>
-      <Grid container spacing={2}>
-        <Grid item xs={12} sm={6} md={3}>
-          <FormControl fullWidth size="small">
-            <InputLabel>Status</InputLabel>
-            <Select
-              name="status"
-              value={filters.status || ''}
-              onChange={handleChange}
-              label="Status"
-            >
-              <MenuItem value="">All</MenuItem>
-              <MenuItem value="pending">Pending</MenuItem>
-              <MenuItem value="in-progress">In Progress</MenuItem>
-              <MenuItem value="resolved">Resolved</MenuItem>
-            </Select>
-          </FormControl>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <FormControl fullWidth size="small">
-            <InputLabel>Type</InputLabel>
-            <Select
-              name="type"
-              value={filters.type || ''}
-              onChange={handleChange}
-              label="Type"
-            >
-              <MenuItem value="">All</MenuItem>
-              <MenuItem value="Complaint">Complaint</MenuItem>
-              <MenuItem value="Feedback">Feedback</MenuItem>
-              <MenuItem value="Suggestion">Suggestion</MenuItem>
-              <MenuItem value="Query">Query</MenuItem>
-            </Select>
-          </FormControl>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <TextField
-            fullWidth
-            label="From Date"
-            type="date"
-            name="fromDate"
-            value={filters.fromDate || ''}
+    <Paper elevation={0} sx={{ p: 2.5, mb: 3, borderRadius: 2, border: '1px solid #e5e7eb' }}>
+      <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ color: '#6b7280' }}>
+          <FilterListIcon fontSize="small" />
+          <Typography variant="body2" fontWeight={600}>Filters</Typography>
+        </Stack>
+
+        <FormControl size="small" sx={{ minWidth: 140 }}>
+          <Select
+            name="status"
+            value={filters.status || ''}
             onChange={handleChange}
-            InputLabelProps={{ shrink: true }}
-            size="small"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <TextField
-            fullWidth
-            label="To Date"
-            type="date"
-            name="toDate"
-            value={filters.toDate || ''}
+            displayEmpty
+            sx={{ borderRadius: 2, fontSize: '0.85rem' }}
+          >
+            <MenuItem value="">All Status</MenuItem>
+            <MenuItem value="pending">Pending</MenuItem>
+            <MenuItem value="in-progress">In Progress</MenuItem>
+            <MenuItem value="resolved">Resolved</MenuItem>
+          </Select>
+        </FormControl>
+
+        <FormControl size="small" sx={{ minWidth: 140 }}>
+          <Select
+            name="type"
+            value={filters.type || ''}
             onChange={handleChange}
-            InputLabelProps={{ shrink: true }}
-            size="small"
-          />
-        </Grid>
-      </Grid>
-      <Box display="flex" justifyContent="flex-end" mt={2}>
-        <Button
-          startIcon={<ClearAllIcon />}
-          onClick={onClearFilters}
-          variant="outlined"
+            displayEmpty
+            sx={{ borderRadius: 2, fontSize: '0.85rem' }}
+          >
+            <MenuItem value="">All Types</MenuItem>
+            <MenuItem value="Complaint">Complaint</MenuItem>
+            <MenuItem value="Feedback">Feedback</MenuItem>
+            <MenuItem value="Suggestion">Suggestion</MenuItem>
+            <MenuItem value="HR Support/Request">HR Support</MenuItem>
+          </Select>
+        </FormControl>
+
+        <TextField
+          label="From"
+          type="date"
+          name="fromDate"
+          value={filters.fromDate || ''}
+          onChange={handleChange}
+          InputLabelProps={{ shrink: true }}
           size="small"
-        >
-          Clear Filters
-        </Button>
-      </Box>
+          sx={{ width: 160, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+        />
+
+        <TextField
+          label="To"
+          type="date"
+          name="toDate"
+          value={filters.toDate || ''}
+          onChange={handleChange}
+          InputLabelProps={{ shrink: true }}
+          size="small"
+          sx={{ width: 160, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+        />
+
+        {hasActiveFilters && (
+          <Button
+            startIcon={<ClearAllIcon />}
+            onClick={onClearFilters}
+            size="small"
+            sx={{ textTransform: 'none', color: '#dc2626', borderRadius: 2, fontWeight: 600 }}
+          >
+            Clear
+          </Button>
+        )}
+      </Stack>
     </Paper>
   );
 };
 
-const HelpDesk = () => {
+const HelpDesk = ({ hideHeader = false }) => {
   const dispatch = useDispatch();
   const tickets = useSelector(selectHelpdeskTickets);
   const loading = useSelector(selectHelpdeskLoading);
   const error = useSelector(selectHelpdeskError);
   const [filteredTickets, setFilteredTickets] = useState([]);
-  const [filters, setFilters] = useState({
-    status: '',
-    type: '',
-    fromDate: '',
-    toDate: '',
-  });
-  const [notification, setNotification] = useState({
-    open: false,
-    message: '',
-    severity: 'success',
-  });
+  const [filters, setFilters] = useState({ status: '', type: '', fromDate: '', toDate: '' });
+  const [selectedTicket, setSelectedTicket] = useState(null);
+  const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' });
 
   useEffect(() => {
     dispatch(fetchHelpdeskTickets());
@@ -455,75 +294,38 @@ const HelpDesk = () => {
 
   useEffect(() => {
     if (tickets) {
-      applyFilters();
+      let filtered = [...tickets];
+
+      if (filters.status) filtered = filtered.filter(t => t.status === filters.status);
+      if (filters.type) filtered = filtered.filter(t => t.type === filters.type);
+      if (filters.fromDate) {
+        const from = new Date(filters.fromDate);
+        filtered = filtered.filter(t => new Date(t.createdAt) >= from);
+      }
+      if (filters.toDate) {
+        const to = new Date(filters.toDate);
+        to.setHours(23, 59, 59, 999);
+        filtered = filtered.filter(t => new Date(t.createdAt) <= to);
+      }
+
+      // Pending first, then by date
+      filtered.sort((a, b) => {
+        const aP = a.status === 'pending' ? 0 : a.status === 'in-progress' ? 1 : 2;
+        const bP = b.status === 'pending' ? 0 : b.status === 'in-progress' ? 1 : 2;
+        if (aP !== bP) return aP - bP;
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      });
+
+      setFilteredTickets(filtered);
     }
   }, [tickets, filters]);
 
-  const applyFilters = () => {
-    let filtered = [...tickets];
-
-    // Filter by status
-    if (filters.status) {
-      filtered = filtered.filter(ticket => ticket.status === filters.status);
-    }
-
-    // Filter by type
-    if (filters.type) {
-      filtered = filtered.filter(ticket => ticket.type === filters.type);
-    }
-
-    // Filter by date range
-    if (filters.fromDate) {
-      const fromDate = new Date(filters.fromDate);
-      filtered = filtered.filter(ticket => {
-        const ticketDate = new Date(ticket.createdAt);
-        return isAfter(ticketDate, fromDate) || isEqual(ticketDate, fromDate);
-      });
-    }
-
-    if (filters.toDate) {
-      const toDate = new Date(filters.toDate);
-      // Set time to end of day
-      toDate.setHours(23, 59, 59, 999);
-      filtered = filtered.filter(ticket => {
-        const ticketDate = new Date(ticket.createdAt);
-        return isBefore(ticketDate, toDate) || isEqual(ticketDate, toDate);
-      });
-    }
-
-    setFilteredTickets(filtered);
-  };
-
-  const handleFilterChange = (name, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleClearFilters = () => {
-    setFilters({
-      status: '',
-      type: '',
-      fromDate: '',
-      toDate: '',
-    });
-  };
+  const handleFilterChange = (name, value) => setFilters(prev => ({ ...prev, [name]: value }));
+  const handleClearFilters = () => setFilters({ status: '', type: '', fromDate: '', toDate: '' });
 
   const handleStatusChange = (ticketId, newStatus) => {
-
-
-    setNotification({
-      open: true,
-      message: `Ticket #${ticketId} status updated to ${newStatus}`,
-      severity: 'success',
-    });
-
-
-  };
-
-  const handleCloseNotification = () => {
-    setNotification(prev => ({ ...prev, open: false }));
+    setSelectedTicket(prev => prev ? { ...prev, status: newStatus } : null);
+    setNotification({ open: true, message: `Ticket #${ticketId} updated to ${newStatus}`, severity: 'success' });
   };
 
   const getErrorMessage = (error) => {
@@ -533,163 +335,260 @@ const HelpDesk = () => {
     return 'An error occurred while fetching tickets';
   };
 
+  // Status counts
+  const counts = {
+    total: filteredTickets.length,
+    pending: filteredTickets.filter(t => t.status === 'pending').length,
+    inProgress: filteredTickets.filter(t => t.status === 'in-progress').length,
+    resolved: filteredTickets.filter(t => t.status === 'resolved').length,
+  };
+
   return (
-    <Container maxWidth="xl">
-      <HeaderCard>
-        <CardContent sx={{ py: 3 }}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <Box>
-              <Typography variant="h5" fontWeight="700" color="#2563eb" gutterBottom>
-                Help Desk Portal
-              </Typography>
-              <Typography variant="body2" color="#6b7280">
-                Oversee tickets, respond to queries, and manage user support efficiently
-              </Typography>
+    <Container maxWidth="xl" sx={{ py: hideHeader ? 0 : 2 }}>
+      {!hideHeader && (
+        <HeaderCard>
+          <CardContent sx={{ py: 3 }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <Box>
+                <Typography variant="h5" fontWeight="700" color="#2563eb" gutterBottom>
+                  Help Desk Portal
+                </Typography>
+                <Typography variant="body2" color="#6b7280">
+                  Oversee tickets, respond to queries, and manage user support efficiently
+                </Typography>
+              </Box>
+              <SupportAgentIcon fontSize="large" sx={{ color: "#2563eb" }} />
             </Box>
-            <SupportAgentIcon
-              fontSize="large"
-              sx={{ color: "#2563eb" }}
-            />
-          </Box>
-        </CardContent>
-      </HeaderCard>
+          </CardContent>
+        </HeaderCard>
+      )}
 
-      <TicketFilters
-        filters={filters}
-        onFilterChange={handleFilterChange}
-        onClearFilters={handleClearFilters}
-      />
-
-      <Box sx={{ px: 2 }}>
-        {loading ? (
-          <Box display="flex" justifyContent="center" my={5}>
-            <CircularProgress />
-          </Box>
-        ) : error ? (
-          <Alert severity="error" sx={{ my: 2 }}>
-            {getErrorMessage(error)}
-          </Alert>
-        ) : filteredTickets.length === 0 ? (
-          <Paper sx={{ p: 4, borderRadius: 2, textAlign: 'center' }}>
-            <Typography variant="h6" color="textSecondary">
-              No tickets found matching your criteria.
-            </Typography>
-            {Object.values(filters).some(value => value !== '') && (
-              <Button
-                onClick={handleClearFilters}
-                variant="outlined"
-                sx={{ mt: 2 }}
-              >
-                Clear Filters
-              </Button>
-            )}
+      {/* Status Summary */}
+      <Stack direction="row" spacing={2} sx={{ mb: 3 }} flexWrap="wrap" useFlexGap>
+        {[
+          { label: 'Total', count: counts.total, color: '#6b7280', bg: '#f3f4f6' },
+          { label: 'Pending', count: counts.pending, color: '#d97706', bg: '#fffbeb' },
+          { label: 'In Progress', count: counts.inProgress, color: '#2563eb', bg: '#eff6ff' },
+          { label: 'Resolved', count: counts.resolved, color: '#16a34a', bg: '#f0fdf4' },
+        ].map(item => (
+          <Paper
+            key={item.label}
+            elevation={0}
+            sx={{
+              px: 2.5, py: 1.5,
+              borderRadius: 2,
+              border: '1px solid #e5e7eb',
+              bgcolor: item.bg,
+              minWidth: 120,
+              textAlign: 'center',
+            }}
+          >
+            <Typography variant="h5" fontWeight={700} sx={{ color: item.color }}>{item.count}</Typography>
+            <Typography variant="caption" fontWeight={600} sx={{ color: item.color }}>{item.label}</Typography>
           </Paper>
-        ) : (
-          <>
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle1" color="textSecondary">
-                Showing {filteredTickets.length} tickets
-              </Typography>
-            </Box>
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: {
-                  xs: '1fr',
-                  sm: 'repeat(2, 1fr)',
-                  md: 'repeat(2, 1fr)',
-                  lg: 'repeat(3, 1fr)'
-                },
-                gap: 3,
-              }}
-            >
-              {filteredTickets.map((ticket) => (
-                <Card
-                  key={ticket._id}
-                  sx={{
-                    borderRadius: 3,
-                    boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.1)',
-                    transition: 'all 0.3s ease-in-out',
-                    '&:hover': {
-                      boxShadow: '0px 8px 25px rgba(0, 0, 0, 0.15)',
-                      transform: 'translateY(-4px)',
-                    },
-                    position: 'relative',
-                    overflow: 'visible',
-                  }}
+        ))}
+      </Stack>
+
+      <TicketFilters filters={filters} onFilterChange={handleFilterChange} onClearFilters={handleClearFilters} />
+
+      {/* Tickets */}
+      {loading ? (
+        <Box display="flex" justifyContent="center" my={5}><CircularProgress /></Box>
+      ) : error ? (
+        <Alert severity="error" sx={{ my: 2, borderRadius: 2 }}>{getErrorMessage(error)}</Alert>
+      ) : filteredTickets.length === 0 ? (
+        <Paper elevation={0} sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '2px dashed #e5e7eb' }}>
+          <SupportAgentIcon sx={{ fontSize: 56, color: '#d1d5db', mb: 2 }} />
+          <Typography variant="h6" color="text.secondary" fontWeight={600}>No tickets found</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            {Object.values(filters).some(v => v !== '') ? 'Try adjusting your filters' : 'No support tickets yet'}
+          </Typography>
+        </Paper>
+      ) : (
+        <Stack spacing={1.5}>
+          {filteredTickets.map((ticket) => {
+            const tc = getTypeConfig(ticket.type);
+            const sc = getStatusConfig(ticket.status);
+
+            return (
+              <Paper
+                key={ticket._id}
+                elevation={0}
+                sx={{
+                  p: 0,
+                  borderRadius: 2.5,
+                  border: '1px solid',
+                  borderColor: ticket.status === 'pending' ? '#fde68a' : '#e5e7eb',
+                  bgcolor: ticket.status === 'pending' ? '#fffdf5' : 'white',
+                  transition: 'all 0.2s',
+                  '&:hover': { boxShadow: '0 4px 16px rgba(0,0,0,0.08)', borderColor: '#d1d5db' },
+                  overflow: 'hidden',
+                }}
+              >
+                <Stack
+                  direction={{ xs: 'column', md: 'row' }}
+                  alignItems={{ md: 'center' }}
+                  spacing={2}
+                  sx={{ p: 2.5 }}
                 >
-                  <Box sx={getTypeStyle(ticket.type)}>
-                    {ticket.type.charAt(0).toUpperCase() + ticket.type.slice(1).toLowerCase()}
+                  {/* Status indicator bar (left) */}
+                  <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center' }}>
+                    <Box sx={{
+                      width: 4, height: 48, borderRadius: 2,
+                      bgcolor: sc.color,
+                    }} />
                   </Box>
 
-                  <CardContent sx={{ p: 3, pt: 4 }}>
-                    <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography variant="caption" color="text.secondary">
-                        #{ticket.ticketId}
-                      </Typography>
-                      <StatusChip
-                        status={ticket.status}
-                        onStatusChange={handleStatusChange}
-                        ticketId={ticket.ticketId}
-                        dispatch={dispatch}
-                      />
-                    </Box>
+                  {/* Ticket ID + Type */}
+                  <Stack spacing={0.5} sx={{ minWidth: 130 }}>
+                    <Typography variant="body2" fontWeight={700} color="text.primary">
+                      #{ticket.ticketId}
+                    </Typography>
+                    <Chip
+                      label={tc.label}
+                      size="small"
+                      sx={{
+                        bgcolor: tc.bg, color: tc.color, border: `1px solid ${tc.border}`,
+                        fontWeight: 600, fontSize: '0.7rem', height: 24, width: 'fit-content',
+                      }}
+                    />
+                  </Stack>
 
-                    <ExpandableDescription
-                      ticket={ticket}
-                      onStatusChange={handleStatusChange}
+                  {/* Description */}
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography
+                      variant="body2"
+                      color="text.primary"
+                      sx={{
+                        fontWeight: 500,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      {ticket.description}
+                    </Typography>
+                  </Box>
+
+                  {/* Submitted by */}
+                  <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 140 }}>
+                    <Avatar sx={{
+                      width: 30, height: 30, fontSize: '0.75rem',
+                      bgcolor: ticket.anonymous ? '#f3e8ff' : '#dbeafe',
+                      color: ticket.anonymous ? '#9333ea' : '#2563eb',
+                    }}>
+                      {ticket.anonymous ? '?' : (ticket.employeeId?.name?.charAt(0)?.toUpperCase() || 'U')}
+                    </Avatar>
+                    <Box>
+                      <Typography variant="caption" fontWeight={600} color="text.primary" display="block">
+                        {ticket.anonymous ? 'Anonymous' : (ticket.employeeId?.name || 'Unknown')}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {format(new Date(ticket.createdAt), 'dd MMM yyyy')}
+                      </Typography>
+                    </Box>
+                  </Stack>
+
+                  {/* Status + Actions */}
+                  <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 200, justifyContent: 'flex-end' }}>
+                    {/* Status badge */}
+                    <Chip
+                      icon={sc.icon}
+                      label={sc.label}
+                      size="small"
+                      sx={{
+                        bgcolor: sc.bg, color: sc.color, border: `1px solid ${sc.border}`,
+                        fontWeight: 700, fontSize: '0.75rem',
+                        '& .MuiChip-icon': { color: sc.color },
+                      }}
                     />
 
-                    <Divider sx={{ my: 2 }} />
-
-                    <Stack spacing={1.5}>
-                      <Box display="flex" alignItems="center" sx={{ p: 1, borderRadius: 1 }}>
-                        <AccessTimeIcon sx={{ fontSize: '1rem', mr: 1, color: 'primary.main' }} />
-                        <Typography
-                          variant="body2"
+                    {/* Quick status buttons for pending */}
+                    {ticket.status === 'pending' && (
+                      <Tooltip title="Mark In Progress">
+                        <IconButton
+                          size="small"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            try {
+                              await dispatch(updateTicketStatus({ ticketId: ticket.ticketId, status: 'in-progress' })).unwrap();
+                              handleStatusChange(ticket.ticketId, 'in-progress');
+                            } catch (err) { console.error(err); }
+                          }}
                           sx={{
-                            color: 'text.primary',
-                            fontSize: '0.85rem',
-                            fontWeight: 500
+                            bgcolor: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe',
+                            '&:hover': { bgcolor: '#dbeafe' },
                           }}
                         >
-                          {format(new Date(ticket.createdAt), 'MMM dd, yyyy')}
-                        </Typography>
-                      </Box>
+                          <InProgressIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
 
-                      <Box display="flex" alignItems="center" sx={getStatusBoxStyle(ticket.anonymous)}>
-                        <PersonIcon sx={{
-                          fontSize: '1rem',
-                          mr: 1,
-                          color: ticket.anonymous ? 'secondary.main' : 'success.main'
-                        }} />
-                        <Typography
-                          variant="body2"
+                    {(ticket.status === 'pending' || ticket.status === 'in-progress') && (
+                      <Tooltip title="Mark Resolved">
+                        <IconButton
+                          size="small"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            try {
+                              await dispatch(updateTicketStatus({ ticketId: ticket.ticketId, status: 'resolved' })).unwrap();
+                              handleStatusChange(ticket.ticketId, 'resolved');
+                            } catch (err) { console.error(err); }
+                          }}
                           sx={{
-                            fontSize: '0.85rem',
-                            fontWeight: 500,
-                            color: ticket.anonymous ? 'secondary.main' : 'success.main'
+                            bgcolor: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0',
+                            '&:hover': { bgcolor: '#dcfce7' },
                           }}
                         >
-                          {ticket.employeeId?.name || (ticket.anonymous ? 'Anonymous' : 'Unassigned')}
-                        </Typography>
-                      </Box>
-                    </Stack>
-                  </CardContent>
-                </Card>
-              ))}
-            </Box>
-          </>
-        )}
-      </Box>
+                          <CheckCircleIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+
+                    {/* View detail */}
+                    <Tooltip title="View Details">
+                      <IconButton
+                        size="small"
+                        onClick={() => setSelectedTicket(ticket)}
+                        sx={{
+                          bgcolor: '#f3f4f6', color: '#6b7280', border: '1px solid #e5e7eb',
+                          '&:hover': { bgcolor: '#e5e7eb' },
+                        }}
+                      >
+                        <ViewIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </Stack>
+                </Stack>
+              </Paper>
+            );
+          })}
+        </Stack>
+      )}
+
+      {/* Detail Modal */}
+      <TicketDetailModal
+        ticket={selectedTicket}
+        open={!!selectedTicket}
+        onClose={() => setSelectedTicket(null)}
+        onStatusChange={handleStatusChange}
+        dispatch={dispatch}
+      />
 
       <Snackbar
         open={notification.open}
-        autoHideDuration={6000}
-        onClose={handleCloseNotification}
+        autoHideDuration={4000}
+        onClose={() => setNotification(prev => ({ ...prev, open: false }))}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       >
-        <Alert onClose={handleCloseNotification} severity={notification.severity} sx={{ width: '100%' }}>
+        <Alert
+          onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+          severity={notification.severity}
+          sx={{ width: '100%', borderRadius: 2 }}
+        >
           {notification.message}
         </Alert>
       </Snackbar>

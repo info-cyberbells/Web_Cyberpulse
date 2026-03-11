@@ -8,6 +8,22 @@ import path from 'path';
 import mongoose from 'mongoose';
 import LeaveRequest from '../model/leaveRequestModel.js';
 import Holiday from "../model/holidayModel.js";
+import { createNotification } from "../helpers/createNotification.js";
+
+// Helper function to format time for notifications
+const formatNotificationTime = (timestamp) => {
+  try {
+    const date = new Date(timestamp);
+    if (isNaN(date.getTime())) return timestamp;
+    return date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  } catch {
+    return timestamp;
+  }
+};
 
 // Helper function to handle base64 images
 const handleBase64Image = async (base64Image, folder, employeeId) => {
@@ -144,6 +160,19 @@ export const addAttendance = async (req, res) => {
     });
 
     await newAttendance.save();
+
+    // Send clock-in notification (fire & forget)
+    const emp = await Employee.findById(employeeId).select("name organizationId");
+    if (emp) {
+      createNotification("clock_in", {
+        triggeredBy: employeeId,
+        organizationId: emp.organizationId || organizationId,
+        title: "Clock In",
+        message: `${emp.name} clocked in at ${formatNotificationTime(clockInTime)}`,
+        resourceId: newAttendance._id,
+        resourceType: "attendance",
+      });
+    }
 
     res.status(201).json({
       message: 'Attendance created successfully',
@@ -517,7 +546,7 @@ export const getAllEmployeesAttendanceAndTasksByDate = async (req, res) => {
 
 
     const employeeFilter = {
-      status: { $ne: "0" },
+      status: { $nin: ["0", 0] },
       type: { $ne: 1 },
     };
 
@@ -1595,6 +1624,36 @@ export const updateAttendance = async (req, res) => {
       console.log('Updated activeTaskIdBeforeBreak:', activeTaskIdBeforeBreak);
     }
 
+    // Auto-pause all running tasks when employee clocks out
+    if (Employeestatus === 'clocked out') {
+      try {
+        const runningTasks = await Task.find({
+          employeeId: attendance.employeeId,
+          status: 'In Progress',
+          isDeleted: false
+        });
+
+        const currentTime = new Date();
+        for (const task of runningTasks) {
+          if (task.workSessions.length > 0) {
+            const currentSession = task.workSessions[task.workSessions.length - 1];
+            if (!currentSession.endTime) {
+              currentSession.endTime = currentTime;
+              currentSession.duration = Math.floor((currentTime - currentSession.startTime) / 1000);
+              task.duration += currentSession.duration;
+            }
+          }
+          task.status = 'Paused';
+          task.pauseTime = currentTime;
+          await task.save();
+          console.log(`Auto-paused task ${task._id} on clock-out for employee ${attendance.employeeId}`);
+        }
+      } catch (taskError) {
+        console.error('Error auto-pausing tasks on clock-out:', taskError);
+        // Continue without failing the clock-out
+      }
+    }
+
     // Recalculate workingDay if both times available - ORIGINAL LOGIC PRESERVED
     if (attendance.clockInTime && attendance.clockOutTime) {
       try {
@@ -1627,6 +1686,21 @@ export const updateAttendance = async (req, res) => {
     // Save the attendance record
     const savedAttendance = await attendance.save();
     console.log('Attendance saved successfully:', savedAttendance._id);
+
+    // Send clock-out notification (fire & forget)
+    if (clockOutTime) {
+      const emp = await Employee.findById(attendance.employeeId).select("name organizationId");
+      if (emp) {
+        createNotification("clock_out", {
+          triggeredBy: attendance.employeeId,
+          organizationId: emp.organizationId,
+          title: "Clock Out",
+          message: `${emp.name} clocked out at ${formatNotificationTime(clockOutTime)}`,
+          resourceId: savedAttendance._id,
+          resourceType: "attendance",
+        });
+      }
+    }
 
     // Return response - IMPROVED FORMAT
     res.status(200).json({
@@ -1756,10 +1830,34 @@ cron.schedule('0 21 * * *', async () => {
     const fixedClockOutTime = `${today}T18:30:00`;
 
     for (const attendance of unclockedEmployees) {
+      // Pause all running tasks for this employee before clocking out
+      const runningTasks = await Task.find({
+        employeeId: attendance.employeeId,
+        status: 'In Progress',
+        isDeleted: false
+      });
+
+      const clockOutTime = new Date(fixedClockOutTime);
+      for (const task of runningTasks) {
+        if (task.workSessions.length > 0) {
+          const currentSession = task.workSessions[task.workSessions.length - 1];
+          if (!currentSession.endTime) {
+            currentSession.endTime = clockOutTime;
+            currentSession.duration = Math.floor((clockOutTime - currentSession.startTime) / 1000);
+            task.duration += currentSession.duration;
+          }
+        }
+        task.status = 'Paused';
+        task.pauseTime = clockOutTime;
+        await task.save();
+        console.log(`Auto-paused task ${task._id} for employee ${attendance.employeeId}`);
+      }
+
       attendance.clockOutTime = fixedClockOutTime;
       attendance.isEmergency = true;
       attendance.emergencyReason = 'Auto Clock-Out due to no manual clock-out';
       attendance.autoClockOut = true;
+      attendance.Employeestatus = 'clocked out';
 
       if (!attendance.workingDay || attendance.workingDay === 0) {
         attendance.workingDay = 1;

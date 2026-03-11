@@ -45,9 +45,9 @@ const Home = ({ open, isMobile }) => {
     error } = useSelector((state) => ({
       currentDayAttendance: state.attendances?.currentDayAttendance || [],
       autoClockOutEmployees: state.attendances?.autoClockOutEmployees || [],
-      loading: state.attendances?.loading || false,
+      loading: state.attendances?.currentDayLoading || false,
       autoClockOutLoading: state.attendances?.autoClockOutLoading || false,
-      error: state.attendances?.error || null,
+      error: state.attendances?.currentDayError || null,
     }));
 
   const activeCount = currentDayAttendance.filter(
@@ -227,16 +227,21 @@ const Home = ({ open, isMobile }) => {
   };
 
 
+  const isOnApprovedLeave = (employee) =>
+    employee.leaveRequest?.status === "Approved" &&
+    (!employee.attendance?.todayClockIn || !!employee.attendance?.todayClockOut);
+
   const filteredAttendance = currentDayAttendance.filter((employee) => {
     if (attendanceFilter === 'active') {
       return employee.attendance?.todayClockIn && !employee.attendance?.todayClockOut;
     }
+    if (attendanceFilter === 'onLeave') {
+      return isOnApprovedLeave(employee);
+    }
     if (attendanceFilter === 'absent') {
       const hasNoClockIn = !employee.attendance?.todayClockIn && !employee.attendance?.todayClockOut;
-      const onLeaveAndNotActive = employee.leaveRequest &&
-        (!employee.attendance?.todayClockIn || !!employee.attendance?.todayClockOut);
-
-      return hasNoClockIn || onLeaveAndNotActive;
+      // Exclude employees on approved leave from inactive
+      return hasNoClockIn && !isOnApprovedLeave(employee);
     }
 
     return true;
@@ -467,6 +472,29 @@ const Home = ({ open, isMobile }) => {
 
               <Box
                 sx={{
+                  backgroundColor: attendanceFilter === 'onLeave' ? '#e65100' : '#ff9800',
+                  color: '#fff',
+                  px: 2,
+                  py: 1,
+                  borderRadius: 2,
+                  minWidth: 100,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  whiteSpace: 'nowrap',
+                  fontWeight: 'bold',
+                  fontSize: '1rem',
+                  cursor: 'pointer'
+                }}
+                onClick={() => setAttendanceFilter('onLeave')}
+              >
+                On Leave: {
+                  currentDayAttendance.filter((emp) => isOnApprovedLeave(emp)).length
+                }
+              </Box>
+
+              <Box
+                sx={{
                   backgroundColor: attendanceFilter === 'absent' ? 'error.dark' : 'error.main',
                   color: '#fff',
                   px: 2,
@@ -486,9 +514,7 @@ const Home = ({ open, isMobile }) => {
                 Inactive: {
                   currentDayAttendance.filter((employee) => {
                     const noClockInOut = !employee.attendance?.todayClockIn && !employee.attendance?.todayClockOut;
-                    const onLeaveAndNotActive = employee.leaveRequest &&
-                      (!employee.attendance?.todayClockIn || !!employee.attendance?.todayClockOut);
-                    return noClockInOut || onLeaveAndNotActive;
+                    return noClockInOut && !isOnApprovedLeave(employee);
                   }).length
                 }
               </Box>
@@ -521,7 +547,7 @@ const Home = ({ open, isMobile }) => {
         {error ? (
           <Box textAlign="center" sx={{ p: 4 }}>
             <Typography variant="h5" color="error" sx={{ fontSize: '1.5rem' }}>
-              Error: {error}
+              Error: {typeof error === 'string' ? error : (error?.message || error?.error || "Something went wrong")}
             </Typography>
           </Box>
         ) : currentDayAttendance.length === 0 ? (

@@ -38,6 +38,8 @@ import Holidays from "./components/Holidays/Holidays"
 import LeaveRequest from "./components/LeaveRequest/LeaveRequest";
 import HelpDesk from "./components/HelpDesk";
 import HelpDeskUser from "./components/HelpDeskUser/HelpDesk";
+import SupportDeskPage from "./components/SupportDeskPage";
+import LeavePage from "./components/LeavePage";
 import HolidaysUser from "./components/Holidays/HolidaysUser";
 import Monthlydata from "./components/MonthlyEmployeeData/Monthlydata";
 import AdvanceSalary from "./components/AdvanceSalary/advancesalary";
@@ -57,6 +59,16 @@ import Slideshow from "./components/SlideShow";
 import PrivacyPolicy from "./features/PrivacyPolicy/PrivacyPolicy";
 import DeleteAccount from "./components/DeleteAccount/DeleteAccount";
 import ChatContainer from "./components/Chat/ChatContainer";
+import Support from "./components/Support/Support";
+import WfhCreditsPage from "./components/WfhCredit/WfhCreditsPage";
+import MyWfhCredits from "./components/WfhCredit/MyWfhCredits";
+import NotificationPage from "./components/Notifications/NotificationPage";
+import Settings from "./components/OrganizationSettings";
+import HRDashboard from "./components/HRDashboard";
+import ProjectDetailView from "./components/ProjectDetailView";
+import { getAttendance } from "./features/attendance/attendanceSlice";
+import { fetchConversations } from "./features/chat/chatSlice";
+import { initFCM, cleanupFCM } from "./services/fcmService";
 
 
 
@@ -82,6 +94,22 @@ function AppContent() {
     }
   }, [dispatch]);
 
+  // Fetch attendance & chat data globally for TopNavbar
+  useEffect(() => {
+    if (isAuthenticated && employeeData?.id) {
+      const today = new Date().toISOString().split("T")[0];
+      dispatch(getAttendance({ id: employeeData.id, date: today }));
+      dispatch(fetchConversations());
+    }
+  }, [isAuthenticated, dispatch]);
+
+  // Initialize FCM push notifications after login
+  useEffect(() => {
+    if (isAuthenticated && employeeData?.id) {
+      initFCM().catch((err) => console.error("FCM init error:", err));
+    }
+  }, [isAuthenticated]);
+
   useEffect(() => {
     let isInitialRender = true;
     if (isAuthenticated && location.pathname !== "/login" && !isInitialRender) {
@@ -105,7 +133,8 @@ function AppContent() {
     );
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await cleanupFCM().catch(() => {});
     localStorage.clear();
     dispatch(logoutUser());
     navigate('/login', { replace: true });
@@ -116,6 +145,7 @@ function AppContent() {
       <Route path="/" element={<Navigate to="/attendance" />} /> {/* Redirect root to /attendance */}
       <Route path="/attendance" element={<Home />} />
       <Route path="/projects" element={<Projects />} />
+      <Route path="/projects/:projectId" element={<ProjectDetailView />} />
       <Route path="/event" element={<EventManagement />} />
       <Route path="/annoucement" element={<Announcement />} />
       <Route path="/add-employee" element={<EmployeeManagement />} />
@@ -133,6 +163,9 @@ function AppContent() {
       <Route path="/invoice-management" element={<InvoiceManagement />} />
       <Route path="/invoice-generator" element={<InvoiceGenerator />} />
       <Route path="/chat" element={<ChatContainer />} />
+      <Route path="/wfh-credits" element={<WfhCreditsPage />} />
+      <Route path="/notifications" element={<NotificationPage />} />
+      <Route path="/settings" element={<Settings />} />
       <Route path="*" element={<Navigate to={lastPath || "/attendance"} />} /> {/* Use lastPath with fallback */}
     </Routes>
   );
@@ -142,6 +175,7 @@ function AppContent() {
       <Route path="/login" element={<LoginForm />} />
       <Route path="/signup" element={<SignUpPage />} />
       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+      <Route path="/support" element={<Support />} />
       <Route path="*" element={<HomePage />} />
     </Routes>
   );
@@ -206,6 +240,8 @@ function AppContent() {
             <Route path="/employee-handbook" element={<EmployeeHandbookView />} />
             <Route path="/delete-account" element={<DeleteAccount />} />
             <Route path="/chat" element={<ChatContainer />} />
+            <Route path="/my-wfh-credits" element={<MyWfhCredits />} />
+            <Route path="/notifications" element={<NotificationPage />} />
             {currentUserId === specificUserId && (
               <Route path="/active-employees" element={<Home />} />
             )}
@@ -228,17 +264,17 @@ function AppContent() {
             <Route path="/" element={<Navigate to="/attendance" />} /> {/* Redirect root to /attendance */}
             <Route path="/active-employees" element={<Home />} />
             <Route path="/projects" element={<Projects />} />
-            <Route path="/help-desk" element={<HelpDeskUser />} />
+            <Route path="/projects/:projectId" element={<ProjectDetailView />} />
+            <Route path="/help-desk" element={<SupportDeskPage />} />
             <Route path="/holidays" element={<HolidaysUser />} />
             <Route path="/task" element={<TaskManagement />} />
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard" element={<HRDashboard />} />
             <Route path="/annoucement" element={<Announcement />} />
             <Route path="/attendance" element={<AttendanceManagement />} />
             <Route path="/profile" element={<ProfileManagement />} />
             <Route path="/add-technology" element={<AddTechnologyForm />} />
             <Route path="/event" element={<EventManagement />} />
-            <Route path="/leave" element={<LeaveManagement />} />
-            <Route path="/leave-request" element={<LeaveRequest />} />
+            <Route path="/leave" element={<LeavePage />} />
             <Route path="/performance-analysis/:employeeId" element={<PerformanceAnalysisModal />} />
             <Route path="/advance-salary" element={<AdvanceSalary />} />
             <Route path="/monthly-data" element={<Monthlydata />} />
@@ -247,6 +283,10 @@ function AppContent() {
             <Route path="/add-employee" element={<EmployeeManagement />} />
             <Route path="/add-employee/:employeeId" element={<EmployeeDetails />} />
             <Route path="/chat" element={<ChatContainer />} />
+            <Route path="/wfh-credits" element={<WfhCreditsPage />} />
+
+            <Route path="/notifications" element={<NotificationPage />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to={lastPath || "/attendance"} />} /> {/* Use lastPath with fallback */}
           </Routes>
         </Sidebar>
@@ -269,23 +309,25 @@ function AppContent() {
             <Route path="/active-employees" element={<Home />} />
             <Route path="/add-employee" element={<EmployeeManagement />} />
             <Route path="/add-employee/:employeeId" element={<EmployeeDetails />} />
-            <Route path="/help-desk" element={<HelpDeskUser />} />
+            <Route path="/help-desk" element={<SupportDeskPage />} />
             <Route path="/annoucement" element={<Announcement />} />
             <Route path="/holidays" element={<HolidaysUser />} />
             <Route path="/task" element={<TaskManagement />} />
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard" element={<HRDashboard />} />
             <Route path="/attendance" element={<AttendanceManagement />} />
             <Route path="/performance-analysis/:employeeId" element={<PerformanceAnalysisModal />} />
             <Route path="/event" element={<EventManagement />} />
             <Route path="/profile" element={<ProfileManagement />} />
             <Route path="/monthly-data" element={<Monthlydata />} />
-            <Route path="/leave" element={<LeaveManagement />} />
-            <Route path="/leave-request" element={<LeaveRequest />} />
-            <Route path="/Suggestion-desk" element={<HelpDesk />} />
+            <Route path="/leave" element={<LeavePage />} />
             <Route path="/get-all-requests" element={<AdminAdvanceSalary />} />
             <Route path="/salary-slips" element={<SalarySlip />} />
             <Route path="/add-file" element={<AdminSide />} />
             <Route path="/chat" element={<ChatContainer />} />
+            <Route path="/wfh-credits" element={<WfhCreditsPage />} />
+
+            <Route path="/notifications" element={<NotificationPage />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to={lastPath || "/attendance"} />} /> {/* Use lastPath with fallback */}
           </Routes>
         </Sidebar>
@@ -305,7 +347,9 @@ function AppContent() {
           <Routes>
             <Route path="/" element={<Navigate to="/attendance" />} /> {/* Redirect root to /attendance */}
             <Route path="/attendance" element={<Home />} />
+            <Route path="/active-employees" element={<Home />} />
             <Route path="/projects" element={<Projects />} />
+            <Route path="/projects/:projectId" element={<ProjectDetailView />} />
             <Route path="/event" element={<EventManagement />} />
             <Route path="/annoucement" element={<Announcement />} />
             <Route path="/add-employee" element={<EmployeeManagement />} />
@@ -313,6 +357,8 @@ function AppContent() {
             <Route path="/add-technology" element={<AddTechnologyForm />} />
             <Route path="/Archive" element={<ArchivedProjectList />} />
             <Route path="/leave-request" element={<LeaveRequest />} />
+            <Route path="/leave" element={<LeavePage />} />
+            <Route path="/task" element={<TaskManagement />} />
             <Route path="/holidays" element={<Holidays />} />
             <Route path="/help-desk" element={<HelpDesk />} />
             <Route path="/monthly-data" element={<Monthlydata />} />
@@ -320,6 +366,12 @@ function AppContent() {
             <Route path="/add-employee/:employeeId" element={<EmployeeDetails />} />
             <Route path="/add-file" element={<AdminSide />} />
             <Route path="/chat" element={<ChatContainer />} />
+            <Route path="/wfh-credits" element={<WfhCreditsPage />} />
+            <Route path="/dashboard" element={<HRDashboard />} />
+            <Route path="/salary-slips" element={<SalarySlip />} />
+            <Route path="/profile" element={<ProfileManagement />} />
+            <Route path="/notifications" element={<NotificationPage />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to={lastPath || "/attendance"} />} /> {/* Use lastPath with fallback */}
           </Routes>
         </Sidebar>

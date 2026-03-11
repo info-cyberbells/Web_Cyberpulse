@@ -26,6 +26,11 @@ import employeeRatingRoutes from "./route/EmployeeRatingRoute.js";
 import routerOrganization from './route/registerOrganization.js';
 import invoiceRouter from './route/invoiceRoutes.js';
 import routerChat from './route/chatRoute.js';
+import routerWfhCredit from './route/wfhCreditRoute.js';
+import routerNotification from './route/notificationRoute.js';
+import routerOrgSettings from './route/organizationSettingsRoute.js';
+import routerUserNotifPref from './route/userNotificationPreferenceRoute.js';
+import routerFcmToken from './route/fcmTokenRoute.js';
 import { initializeSocketServer } from './socket/socketServer.js';
 import { apiRateLimiter } from './middleware/rateLimitMiddleware.js';
 
@@ -64,6 +69,11 @@ app.use("/api/performance", employeeRatingRoutes);
 app.use("/api/admin", routerOrganization);
 app.use("/api/invoice", invoiceRouter);
 app.use("/api/chat", apiRateLimiter, routerChat);
+app.use("/api/wfh-credit", routerWfhCredit);
+app.use("/api/notifications", routerNotification);
+app.use("/api/org-settings", routerOrgSettings);
+app.use("/api/notification-preferences", routerUserNotifPref);
+app.use("/api/fcm-token", routerFcmToken);
 
 const PORT = process.env.PORT || 4040;
 const httpServer = http.createServer(app);

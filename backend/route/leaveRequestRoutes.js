@@ -5,6 +5,8 @@ import {
   getLeaveRequestById,
   updateLeaveRequest,
   deleteLeaveRequest,
+  checkWfhEligibility,
+  checkBirthdayLeaveEligibility,
 } from "../controller/leaveRequestController.js";
 
 const routerLeaveRequest = express.Router();
@@ -23,5 +25,11 @@ routerLeaveRequest.patch("/update/:id", updateLeaveRequest);
 
 // Delete a Leave Request
 routerLeaveRequest.delete("/delete/:id", deleteLeaveRequest);
+
+// Check WFH eligibility
+routerLeaveRequest.get("/wfh-eligibility/:employeeId", checkWfhEligibility);
+
+// Check Birthday Leave eligibility
+routerLeaveRequest.get("/birthday-eligibility/:employeeId", checkBirthdayLeaveEligibility);
 
 export default routerLeaveRequest;

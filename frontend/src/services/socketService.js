@@ -8,7 +8,7 @@ class SocketService {
   connect(token) {
     if (this.socket?.connected) return this.socket;
 
-    const baseURL = 'http://localhost:4040';
+    const baseURL = 'https://cyberpulse360.com';
 
     this.socket = io(baseURL, {
       auth: { token },

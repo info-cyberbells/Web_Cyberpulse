@@ -36,13 +36,11 @@ export const fetchCurrentEmpAttendanceAsync = createAsyncThunk(
   async ({ date, isInitialFetch }, { rejectWithValue }) => {
     try {
       const response = await getCurrentEmpAttendance(date);
-      console.log("Raw API Response:", response);
       const attendanceData = response.data || response;
-      console.log("Processed attendance data:", attendanceData);
-      return attendanceData;
+      return Array.isArray(attendanceData) ? attendanceData : [];
     } catch (error) {
       console.error("API Error:", error);
-      return rejectWithValue(error.message);
+      return rejectWithValue(error?.message || error?.error || "Failed to fetch attendance");
     }
   }
 );
@@ -217,9 +215,9 @@ const initialState = {
 const attendanceSlice = createSlice({
   name: "attendances",
   initialState: {
-    currentDayAttendance: [],
-    loading: false,
-    error: null
+    ...initialState,
+    currentDayLoading: false,
+    currentDayError: null,
   },
   reducers: {
     clearError: (state) => {
@@ -407,16 +405,16 @@ const attendanceSlice = createSlice({
     //CurrentLogin
     builder
       .addCase(fetchCurrentEmpAttendanceAsync.pending, (state) => {
-        state.loading = true;
-        state.error = null;
+        state.currentDayLoading = true;
+        state.currentDayError = null;
       })
       .addCase(fetchCurrentEmpAttendanceAsync.fulfilled, (state, action) => {
-        state.loading = false;
+        state.currentDayLoading = false;
         state.currentDayAttendance = action.payload || [];
       })
       .addCase(fetchCurrentEmpAttendanceAsync.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
+        state.currentDayLoading = false;
+        state.currentDayError = typeof action.payload === 'string' ? action.payload : action.payload?.message || action.payload?.error || "Failed to fetch attendance";
         state.currentDayAttendance = []; // Clear the data on error
       })
 

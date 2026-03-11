@@ -26,6 +26,8 @@ export const API_ROUTES = {
   EDIT_LEAVE: "/leave/update/",
   LIST_All_LEAVE: "/leave/fetchAll/",
   LIST_LEAVE: 'leave/detail',
+  CHECK_WFH_ELIGIBILITY: "/leave/wfh-eligibility/",
+  CHECK_BIRTHDAY_ELIGIBILITY: "/leave/birthday-eligibility/",
 
   ADD_EVENT: "/event/add",
   DELETE_EVENT: "/event/delete",
@@ -56,8 +58,11 @@ export const API_ROUTES = {
   EDIT_TASK: "/task/update/",
   STATUS_TASK: "/task/status/",
 
+  PAUSE_ALL_TASKS: "/task/pauseAll/",
   LIST_All_TASK: "/task/fetchAll",
   LIST_TASK: 'task/detail',
+  FETCH_TASKS_BY_PROJECT: "/task/fetchByProject",
+  DETAIL_PROJECT: "/projects/detail/",
 
   ADD_HELPDESK: "/help/desk/add",
   UPDATE_TICKET_STATUS: "/help/desk/updateStatus/",
@@ -104,4 +109,29 @@ export const API_ROUTES = {
 
   DELETE_EMPLOYEE_ACCOUNT: "/employee/delete-account",
 
+  EVALUATE_WFH_CREDIT: "/wfh-credit/evaluate",
+  GET_ALL_WFH_CREDITS: "/wfh-credit/all",
+  GET_MY_WFH_CREDITS: "/wfh-credit/my-credits",
+  GET_EMPLOYEE_WFH_CREDITS: "/wfh-credit/employee/",
+
+  SEND_CREDIT_UPDATE_REQUEST: "/wfh-credit/request-update",
+  GET_ALL_CREDIT_UPDATE_REQUESTS: "/wfh-credit/update-requests",
+  GET_MY_CREDIT_UPDATE_REQUESTS: "/wfh-credit/my-update-requests",
+  UPDATE_CREDIT_UPDATE_REQUEST: "/wfh-credit/update-request/",
+
+  GET_NOTIFICATIONS: "/notifications",
+  GET_UNREAD_COUNT: "/notifications/unread-count",
+  MARK_NOTIFICATION_READ: "/notifications/",
+  MARK_ALL_NOTIFICATIONS_READ: "/notifications/mark-all-read",
+  GET_NOTIFICATION_SETTINGS: "/notifications/settings",
+  UPDATE_NOTIFICATION_SETTINGS: "/notifications/settings",
+
+  GET_ORG_SETTINGS: "/org-settings/",
+  UPDATE_ORG_SETTINGS: "/org-settings/",
+
+  GET_USER_NOTIF_PREFERENCES: "/notification-preferences",
+  UPDATE_USER_NOTIF_PREFERENCES: "/notification-preferences",
+  REGISTER_FCM_TOKEN: "/fcm-token",
+  REMOVE_FCM_TOKEN: "/fcm-token",
+  REMOVE_ALL_FCM_TOKENS: "/fcm-token/all",
 };

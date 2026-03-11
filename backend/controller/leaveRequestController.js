@@ -1,6 +1,8 @@
 import LeaveRequest from "../model/leaveRequestModel.js";
 import Employee from '../model//employeeModel.js'
+import WfhCredit from "../model/wfhCreditModel.js";
 import mongoose from "mongoose";
+import { createNotification, createNotificationForEmployee } from "../helpers/createNotification.js";
 
 function calculateLeaveDeduction(type, startDate, endDate) {
   const start = new Date(startDate);
@@ -14,6 +16,9 @@ function calculateLeaveDeduction(type, startDate, endDate) {
       return 0.5;
     case 'short-leave':
       return 0.25;
+    case 'wfh':
+    case 'birthday':
+      return 0;
     default:
       return 0;
   }
@@ -23,7 +28,7 @@ function calculateLeaveDeduction(type, startDate, endDate) {
 
 export const addLeaveRequest = async (req, res) => {
   try {
-    const { employeeId, startDate, endDate, leaveType, reason, organizationId } = req.body;
+    const { employeeId, startDate, endDate, leaveType, reason, organizationId, halfDayType, startTime, endTime } = req.body;
 
     // Validate required fields
     if (!employeeId || !startDate || !endDate || !leaveType || !reason) {
@@ -79,6 +84,83 @@ export const addLeaveRequest = async (req, res) => {
       case 'short-leave':
         deduction = 0.25;
         break;
+      case 'wfh': {
+        // WFH: Check eligibility from previous month's credits
+        const now = new Date();
+        // Previous month's evaluation determines this month's eligibility
+        let prevMonth = now.getMonth(); // 0-indexed, so getMonth() gives previous month number (1-indexed)
+        let prevYear = now.getFullYear();
+        if (prevMonth === 0) {
+          prevMonth = 12;
+          prevYear -= 1;
+        }
+
+        const wfhCredit = await WfhCredit.findOne({
+          employeeId,
+          month: prevMonth,
+          year: prevYear,
+          isEligible: true,
+        });
+
+        if (!wfhCredit) {
+          return res.status(400).json({
+            success: false,
+            error: "You are not eligible for WFH this month. 5/5 credits required from previous month evaluation."
+          });
+        }
+
+        // Count WFH days already used this month
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+        const wfhUsed = await LeaveRequest.countDocuments({
+          employeeId,
+          leaveType: "wfh",
+          startDate: { $gte: monthStart, $lte: monthEnd },
+        });
+
+        const wfhDaysRequested = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+
+        if (wfhUsed + wfhDaysRequested > 2) {
+          return res.status(400).json({
+            success: false,
+            error: `Only 2 WFH days allowed per month. You have used ${wfhUsed}, requesting ${wfhDaysRequested}.`
+          });
+        }
+
+        deduction = 0; // WFH does NOT deduct from leave quota
+        break;
+      }
+      case 'birthday': {
+        // Birthday Leave: 1 per year, no quota deduction
+        if (!employee.dob) {
+          return res.status(400).json({
+            success: false,
+            error: "Date of birth is not set on your profile. Please update your DOB first."
+          });
+        }
+
+        // Check if birthday leave already taken this year
+        const currentYear = new Date().getFullYear();
+        const yearStart = new Date(currentYear, 0, 1);
+        const yearEnd = new Date(currentYear, 11, 31, 23, 59, 59);
+
+        const birthdayLeaveTaken = await LeaveRequest.findOne({
+          employeeId,
+          leaveType: "birthday",
+          startDate: { $gte: yearStart, $lte: yearEnd },
+        });
+
+        if (birthdayLeaveTaken) {
+          return res.status(400).json({
+            success: false,
+            error: "Birthday leave already used this year. You get 1 birthday leave per year."
+          });
+        }
+
+        deduction = 0; // Birthday leave does NOT deduct from leave quota
+        break;
+      }
       default:
         return res.status(400).json({
           success: false,
@@ -86,12 +168,30 @@ export const addLeaveRequest = async (req, res) => {
         });
     }
 
-    // Update leaveQuota
-    const currentQuota = parseFloat(employee.leaveQuota) || 0;
-    employee.leaveQuota = (currentQuota - deduction).toString();
-    await employee.save();
+    // Update leaveQuota (only for leaves that deduct quota)
+    if (leaveType !== 'wfh' && leaveType !== 'birthday') {
+      const currentQuota = parseFloat(employee.leaveQuota) || 0;
+      employee.leaveQuota = (currentQuota - deduction).toString();
+      await employee.save();
+    }
 
     // Create and save the leave request
+    // Determine startTime/endTime for half-day and short-leave
+    let finalStartTime = null;
+    let finalEndTime = null;
+    if (leaveType === 'half-day') {
+      if (halfDayType === '1st-half') {
+        finalStartTime = '09:30 AM';
+        finalEndTime = '01:30 PM';
+      } else {
+        finalStartTime = '01:30 PM';
+        finalEndTime = '06:30 PM';
+      }
+    } else if (leaveType === 'short-leave') {
+      finalStartTime = startTime || null;
+      finalEndTime = endTime || null;
+    }
+
     const leaveRequest = new LeaveRequest({
       employeeId,
       startDate,
@@ -99,10 +199,23 @@ export const addLeaveRequest = async (req, res) => {
       leaveType,
       reason,
       organizationId,
+      halfDayType: leaveType === 'half-day' ? (halfDayType || null) : null,
+      startTime: finalStartTime,
+      endTime: finalEndTime,
       status: "pending",
     });
 
     const savedLeaveRequest = await leaveRequest.save();
+
+    // Send leave request notification (fire & forget)
+    createNotification("leave_request", {
+      triggeredBy: employeeId,
+      organizationId: employee.organizationId || organizationId,
+      title: "Leave Request",
+      message: `${employee.name} requested ${leaveType} leave from ${startDate} to ${endDate}`,
+      resourceId: savedLeaveRequest._id,
+      resourceType: "leaveRequest",
+    });
 
     res.status(201).json({
       success: true,
@@ -279,7 +392,7 @@ export const getLeaveRequestById = async (req, res) => {
 export const updateLeaveRequest = async (req, res) => {
   try {
     const { id } = req.params;
-    const { startDate, endDate, leaveType, reason, status } = req.body;
+    const { startDate, endDate, leaveType, reason, status, halfDayType, startTime, endTime } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, error: "Invalid ID" });
@@ -295,28 +408,64 @@ export const updateLeaveRequest = async (req, res) => {
       return res.status(404).json({ success: false, error: "Employee not found" });
     }
 
+    // Only adjust quota for leaves that deduct quota
+    const oldNoDeduct = leaveRequest.leaveType === 'wfh' || leaveRequest.leaveType === 'birthday';
+    const newNoDeduct = leaveType === 'wfh' || leaveType === 'birthday';
 
-    const oldDeduction = calculateLeaveDeduction(
-      leaveRequest.leaveType,
-      leaveRequest.startDate,
-      leaveRequest.endDate
-    );
-    employee.leaveQuota = (parseFloat(employee.leaveQuota || 0) + oldDeduction).toString();
-
+    if (!oldNoDeduct) {
+      const oldDeduction = calculateLeaveDeduction(
+        leaveRequest.leaveType,
+        leaveRequest.startDate,
+        leaveRequest.endDate
+      );
+      employee.leaveQuota = (parseFloat(employee.leaveQuota || 0) + oldDeduction).toString();
+    }
 
     leaveRequest.startDate = startDate;
     leaveRequest.endDate = endDate;
     leaveRequest.leaveType = leaveType;
     leaveRequest.reason = reason;
     leaveRequest.status = status;
+    leaveRequest.halfDayType = leaveType === 'half-day' ? (halfDayType || null) : null;
 
+    // Update startTime/endTime
+    if (leaveType === 'half-day') {
+      leaveRequest.startTime = halfDayType === '1st-half' ? '09:30 AM' : '01:30 PM';
+      leaveRequest.endTime = halfDayType === '1st-half' ? '01:30 PM' : '06:30 PM';
+    } else if (leaveType === 'short-leave') {
+      leaveRequest.startTime = startTime || null;
+      leaveRequest.endTime = endTime || null;
+    } else {
+      leaveRequest.startTime = null;
+      leaveRequest.endTime = null;
+    }
 
-    const newDeduction = calculateLeaveDeduction(leaveType, startDate, endDate);
-    employee.leaveQuota = (parseFloat(employee.leaveQuota) - newDeduction).toString();
+    if (!newNoDeduct) {
+      const newDeduction = calculateLeaveDeduction(leaveType, startDate, endDate);
+      employee.leaveQuota = (parseFloat(employee.leaveQuota) - newDeduction).toString();
+    }
 
     await leaveRequest.save();
     await employee.save();
 
+    // Notify employee on approve/reject
+    if (status === "approved" || status === "rejected") {
+      const actionBy = req.user?.id;
+      const actionByEmp = actionBy ? await Employee.findById(actionBy).select("name") : null;
+      const actionByName = actionByEmp?.name || "Admin";
+      const notifType = status === "approved" ? "leave_approved" : "leave_rejected";
+      const notifTitle = status === "approved" ? "Leave Approved" : "Leave Rejected";
+
+      createNotificationForEmployee(notifType, {
+        triggeredBy: actionBy || leaveRequest.employeeId,
+        recipientId: leaveRequest.employeeId,
+        organizationId: employee.organizationId,
+        title: notifTitle,
+        message: `Your ${leaveType} leave (${startDate} to ${endDate}) has been ${status} by ${actionByName}`,
+        resourceId: leaveRequest._id,
+        resourceType: "leaveRequest",
+      });
+    }
 
     res.status(200).json({ success: true, data: leaveRequest });
   } catch (error) {
@@ -359,5 +508,116 @@ export const deleteLeaveRequest = async (req, res) => {
     res.status(200).json({ success: true, message: "Leave Request deleted and quota recovered" });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
+  }
+};
+
+
+// Check WFH eligibility for an employee
+export const checkWfhEligibility = async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(employeeId)) {
+      return res.status(400).json({ success: false, error: "Invalid employeeId" });
+    }
+
+    const now = new Date();
+    // Previous month's evaluation determines this month's eligibility
+    let prevMonth = now.getMonth(); // 0-indexed current, so this is prev month 1-indexed
+    let prevYear = now.getFullYear();
+    if (prevMonth === 0) {
+      prevMonth = 12;
+      prevYear -= 1;
+    }
+
+    // Find evaluation for previous month (regardless of eligibility)
+    const wfhCredit = await WfhCredit.findOne({
+      employeeId,
+      month: prevMonth,
+      year: prevYear,
+    });
+
+    const isEligible = wfhCredit?.isEligible || false;
+
+    // Count WFH days used this month
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+    const wfhUsed = await LeaveRequest.countDocuments({
+      employeeId,
+      leaveType: "wfh",
+      startDate: { $gte: monthStart, $lte: monthEnd },
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        isEligible,
+        isEvaluated: !!wfhCredit,
+        wfhDaysAllowed: 2,
+        wfhDaysUsed: wfhUsed,
+        wfhDaysRemaining: Math.max(0, 2 - wfhUsed),
+        evaluationMonth: prevMonth,
+        evaluationYear: prevYear,
+        criteria: wfhCredit?.criteria || null,
+        totalCredits: wfhCredit?.totalCredits || 0,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// Check Birthday Leave eligibility for an employee
+export const checkBirthdayLeaveEligibility = async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(employeeId)) {
+      return res.status(400).json({ success: false, error: "Invalid employeeId" });
+    }
+
+    const employee = await Employee.findById(employeeId);
+    if (!employee) {
+      return res.status(404).json({ success: false, error: "Employee not found" });
+    }
+
+    if (!employee.dob) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          eligible: false,
+          alreadyTaken: false,
+          hasDob: false,
+          birthdayThisYear: null,
+        },
+      });
+    }
+
+    const currentYear = new Date().getFullYear();
+    const dob = new Date(employee.dob);
+    const birthdayThisYear = new Date(currentYear, dob.getMonth(), dob.getDate());
+
+    // Check if birthday leave already taken this year
+    const yearStart = new Date(currentYear, 0, 1);
+    const yearEnd = new Date(currentYear, 11, 31, 23, 59, 59);
+
+    const birthdayLeaveTaken = await LeaveRequest.findOne({
+      employeeId,
+      leaveType: "birthday",
+      startDate: { $gte: yearStart, $lte: yearEnd },
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        eligible: !birthdayLeaveTaken,
+        alreadyTaken: !!birthdayLeaveTaken,
+        hasDob: true,
+        birthdayThisYear: birthdayThisYear.toISOString().split('T')[0],
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
 };

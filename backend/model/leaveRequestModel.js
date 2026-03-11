@@ -8,6 +8,13 @@ const LeaveRequestSchema = new mongoose.Schema({
   leaveType: {
     type: String,
   },
+  halfDayType: {
+    type: String,
+    enum: ["1st-half", "2nd-half", null],
+    default: null,
+  },
+  startTime: { type: String, default: null },
+  endTime: { type: String, default: null },
   status: { type: String },
   organizationId: {
     type: mongoose.Schema.Types.ObjectId,

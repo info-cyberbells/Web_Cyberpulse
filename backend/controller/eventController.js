@@ -1,4 +1,5 @@
 import Event from "../model/eventModel.js";
+import { createNotificationForAll } from "../helpers/createNotification.js";
 
 // Create an Event
 export const addEvent = async (req, res) => {
@@ -45,6 +46,18 @@ export const addEvent = async (req, res) => {
 
     const savedEvent = await newEvent.save();
 
+    // Notify all employees about new event
+    if (organizationId && createdBy) {
+      createNotificationForAll("event_added", {
+        triggeredBy: createdBy,
+        organizationId,
+        title: "New Event",
+        message: `New event: "${title}" on ${eventDate}`,
+        resourceId: savedEvent._id,
+        resourceType: "event",
+      });
+    }
+
     res.status(201).json({ success: true, data: savedEvent });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
@@ -60,7 +73,7 @@ export const fetchAllEvents = async (req, res) => {
       filter.organizationId = req.query.organizationId;
     }
 
-    const events = await Event.find(filter).populate("teamMembers", "name email");
+    const events = await Event.find(filter).populate("teamMembers", "name email").populate("createdBy", "name email");
 
 
     res.status(200).json({ success: true, data: events });

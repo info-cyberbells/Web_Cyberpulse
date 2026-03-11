@@ -23,11 +23,14 @@ import ExpandLessRoundedIcon from '@mui/icons-material/ExpandLessRounded';
 import CalendarTodayRoundedIcon from '@mui/icons-material/CalendarTodayRounded';
 import BusinessRoundedIcon from '@mui/icons-material/BusinessRounded';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 import { removeProject, fetchProjects } from '../features/projects/projectsSlice';
 import ProjectForm from './ProjectForm';
+import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
 
 const ProjectItem = ({ project }) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [showEditForm, setShowEditForm] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -111,7 +114,18 @@ const ProjectItem = ({ project }) => {
         <Box sx={{ p: 3, pb: 2 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
             <Box sx={{ maxWidth: '75%' }}>
-              <Typography variant="h6" fontWeight={600} sx={{ mb: 1, color: '#111', lineHeight: 1.2 }}>
+              <Typography
+                variant="h6"
+                fontWeight={600}
+                onClick={() => navigate(`/projects/${project._id}`)}
+                sx={{
+                  mb: 1,
+                  color: '#111',
+                  lineHeight: 1.2,
+                  cursor: 'pointer',
+                  '&:hover': { color: '#5E35B1' },
+                }}
+              >
                 {project.name}
               </Typography>
 
@@ -320,6 +334,22 @@ const ProjectItem = ({ project }) => {
             borderTop: '1px solid #f0f0f0',
             p: 2
           }}>
+            <Button
+              startIcon={<OpenInNewRoundedIcon />}
+              onClick={() => navigate(`/projects/${project._id}`)}
+              sx={{
+                mr: 1.5,
+                color: '#1976D2',
+                fontWeight: 600,
+                fontSize: '0.8rem',
+                textTransform: 'none',
+                '&:hover': {
+                  backgroundColor: alpha('#1976D2', 0.08),
+                }
+              }}
+            >
+              View Details
+            </Button>
             <Button
               startIcon={<EditRoundedIcon />}
               onClick={() => setShowEditForm(true)}

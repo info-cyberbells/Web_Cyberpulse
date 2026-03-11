@@ -2,6 +2,8 @@ import Message from '../../model/MessageModel.js';
 import Conversation from '../../model/ConversationModel.js';
 import { CHAT_CONSTANTS } from '../../utils/chatConstants.js';
 import { socketRateLimiter } from '../../middleware/rateLimitMiddleware.js';
+import { sendPushToMultipleUsers } from '../../helpers/sendPushNotification.js';
+import UserNotificationPreference from '../../model/UserNotificationPreferenceModel.js';
 
 export const registerMessageHandlers = (io, socket) => {
   socket.on('message:send', async (data, callback) => {
@@ -83,8 +85,6 @@ export const registerMessageHandlers = (io, socket) => {
       conversation.participants.forEach(participantId => {
         const pid = participantId.toString();
         if (pid !== senderId) {
-          // If this conversation was hidden for them or it's the first message,
-          // they need to refetch their conversation list
           if (wasHiddenFor.includes(pid) || isFirstMessage) {
             io.to(`user:${pid}`).emit('conversation:new', {
               conversationId,
@@ -98,6 +98,14 @@ export const registerMessageHandlers = (io, socket) => {
         }
       });
 
+      // Send FCM push notification to other participants
+      sendChatPushNotification(
+        senderId,
+        conversation.participants,
+        populatedMessage,
+        conversation
+      ).catch(err => console.error('Chat FCM push error:', err));
+
       callback?.({ success: true, data: populatedMessage });
     } catch (error) {
       console.error('message:send error:', error);
@@ -105,3 +113,66 @@ export const registerMessageHandlers = (io, socket) => {
     }
   });
 };
+
+/**
+ * Send FCM push notification for chat messages to other participants.
+ * Respects per-user notification preferences (chat_message type).
+ */
+async function sendChatPushNotification(senderId, participants, populatedMessage, conversation) {
+  try {
+    const recipientIds = participants
+      .map(p => p.toString())
+      .filter(pid => pid !== senderId);
+
+    if (recipientIds.length === 0) return;
+
+    // Check per-user preferences — filter out users who disabled chat notifications
+    const userPrefs = await UserNotificationPreference.find({
+      userId: { $in: recipientIds },
+    });
+
+    const prefsMap = new Map();
+    userPrefs.forEach(p => prefsMap.set(p.userId.toString(), p));
+
+    const pushEligible = recipientIds.filter(id => {
+      const pref = prefsMap.get(id);
+      if (!pref) return true; // no prefs = defaults on
+      if (!pref.pushEnabled) return false;
+      if (pref.preferences?.chat_message === false) return false;
+      return true;
+    });
+
+    if (pushEligible.length === 0) return;
+
+    // Get sender name
+    const senderName = populatedMessage.senderId?.name || 'Someone';
+
+    // Build notification content
+    const isGroup = conversation.type === 'group';
+    const title = isGroup
+      ? (conversation.name || 'Group Chat')
+      : senderName;
+    const body = isGroup
+      ? `${senderName}: ${getMessagePreview(populatedMessage)}`
+      : getMessagePreview(populatedMessage);
+
+    await sendPushToMultipleUsers(pushEligible, title, body, {
+      type: 'chat_message',
+      conversationId: conversation._id.toString(),
+    });
+  } catch (error) {
+    console.error('Error sending chat push notification:', error);
+  }
+}
+
+function getMessagePreview(message) {
+  if (message.content) {
+    return message.content.length > 100
+      ? message.content.substring(0, 100) + '...'
+      : message.content;
+  }
+  if (message.attachments?.length > 0) {
+    return `Sent an attachment`;
+  }
+  return 'New message';
+}

@@ -52,7 +52,7 @@ const FEEDBACK_TYPES = [
   { label: 'HR Support/Request', value: 'HR Support/Request' },
 ];
 
-const HelpDeskUser = () => {
+const HelpDeskUser = ({ hideHeader = false }) => {
   const [type, setType] = useState('');
   const [description, setDescription] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
@@ -122,25 +122,23 @@ const HelpDeskUser = () => {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <HeaderCard>
-        <CardContent sx={{ py: 3 }}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <Box>
-              <Typography variant="h5" fontWeight="700" color="#2563eb" gutterBottom>
-                Help Desk
-              </Typography>
-              <Typography variant="body2" color="#6b7280">
-                Find answers to your questions, get support, and reach out for help when you need it
-              </Typography>
+      {!hideHeader && (
+        <HeaderCard>
+          <CardContent sx={{ py: 3 }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <Box>
+                <Typography variant="h5" fontWeight="700" color="#2563eb" gutterBottom>
+                  Help Desk
+                </Typography>
+                <Typography variant="body2" color="#6b7280">
+                  Find answers to your questions, get support, and reach out for help when you need it
+                </Typography>
+              </Box>
+              <SupportAgentIcon fontSize="large" sx={{ color: "#2563eb" }} />
             </Box>
-
-            <SupportAgentIcon
-              fontSize="large"
-              sx={{ color: "#2563eb" }}
-            />
-          </Box>
-        </CardContent>
-      </HeaderCard>
+          </CardContent>
+        </HeaderCard>
+      )}
 
       <form onSubmit={handleSubmit}>
         <Stack spacing={3}>
