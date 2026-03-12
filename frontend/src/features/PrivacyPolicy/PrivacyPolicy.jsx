@@ -286,8 +286,7 @@ export default function PrivacyPolicy() {
               <strong>Website:</strong> https://cyberpulse360.com
             </Typography>
             <Typography sx={{ ...paragraphStyle, mb: 0.5 }}>
-              <strong>Address:</strong> CyberPulse Group, 3790 El Camino Real,
-              Palo Alto, CA 94306, USA
+              <strong>Address:</strong>  Cyberbells ITES services pvt ltd.
             </Typography>
           </Box>
         </>

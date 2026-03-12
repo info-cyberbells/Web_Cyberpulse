@@ -13,35 +13,31 @@ import {
   useMediaQuery,
   useTheme,
 } from "@mui/material";
-import { Link as RouterLink, useLocation } from "react-router-dom";
+import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import KeyboardArrowDown from '@mui/icons-material/KeyboardArrowDown';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
 import cyberbelllogo from "../assets/logocyberbells.png";
+import DemoPage from "./CyberHome/DemoPage";
 
 const Navbar = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [dropdownStates, setDropdownStates] = useState({});
+  const [demoOpen, setDemoOpen] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const location = useLocation();
+  const navigate = useNavigate();
 
   const toggleDrawer = () => {
     setDrawerOpen(!drawerOpen);
   };
 
-  const isActiveRoute = (path) => {
-    return location.pathname === path;
-  };
-
-  const toggleDropdown = (item) => {
-    setDropdownStates(prev => ({
-      ...prev,
-      [item]: !prev[item]
-    }));
-  };
-
-  const menuItems = ['Product', 'Solution', 'Integration', 'Resources'];
+  const menuItems = [
+    { label: 'Features', action: () => navigate('/') },
+    { label: 'AI Solutions', action: () => window.open('https://web.cyberbells.com/demos/AI_Projects/all_portfolio.html', '_blank') },
+    { label: 'Organisation', action: () => navigate('/signup') },
+    { label: 'Contact', action: () => navigate('/support') },
+  ];
 
   const MobileDrawer = () => (
     <Drawer
@@ -69,14 +65,13 @@ const Navbar = () => {
 
       <List>
         {menuItems.map((item) => (
-          <ListItem key={item} sx={{ py: 1.5 }}>
+          <ListItem key={item.label} onClick={() => { toggleDrawer(); item.action(); }} sx={{ py: 1.5, cursor: 'pointer' }}>
             <ListItemText
-              primary={item}
+              primary={item.label}
               primaryTypographyProps={{
                 sx: { fontWeight: 600, fontSize: "18px", color: "#2c3e50" }
               }}
             />
-            <KeyboardArrowDown sx={{ color: "#2c3e50" }} />
           </ListItem>
         ))}
 
@@ -84,6 +79,7 @@ const Navbar = () => {
           <Button
             variant="contained"
             fullWidth
+            onClick={() => { toggleDrawer(); setDemoOpen(true); }}
             sx={{
               backgroundColor: '#3b82f6',
               color: 'white',
@@ -199,7 +195,8 @@ const Navbar = () => {
               }}>
                 {menuItems.map((item) => (
                   <Box
-                    key={item}
+                    key={item.label}
+                    onClick={item.action}
                     sx={{
                       display: 'flex',
                       alignItems: 'center',
@@ -209,13 +206,7 @@ const Navbar = () => {
                       py: 1,
                       borderRadius: 1,
                       "&:hover": {
-                        '& .menu-text': {
-                          color: '#3b82f6'
-                        },
-                        '& .menu-arrow': {
-                          color: '#3b82f6',
-                          transform: 'translateY(-2px)'
-                        }
+                        '& .menu-text': { color: '#3b82f6' },
                       }
                     }}
                   >
@@ -225,22 +216,13 @@ const Navbar = () => {
                         fontSize: '16px',
                         fontWeight: 600,
                         color: '#64748b',
-                        mr: 0.5,
                         fontFamily: "'Inter', sans-serif",
                         letterSpacing: "-0.01em",
                         transition: 'color 0.2s ease'
                       }}
                     >
-                      {item}
+                      {item.label}
                     </Typography>
-                    <KeyboardArrowDown
-                      className="menu-arrow"
-                      sx={{
-                        fontSize: '18px',
-                        color: '#64748b',
-                        transition: 'all 0.3s ease'
-                      }}
-                    />
                   </Box>
                 ))}
               </Box>
@@ -249,6 +231,7 @@ const Navbar = () => {
               <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                 <Button
                   variant="outlined"
+                  onClick={() => setDemoOpen(true)}
                   sx={{
                     borderColor: '#3b82f6',
                     color: '#3b82f6',
@@ -325,6 +308,9 @@ const Navbar = () => {
 
       {/* Mobile Drawer */}
       {isMobile && <MobileDrawer />}
+
+      {/* Book Demo Modal */}
+      <DemoPage open={demoOpen} onClose={() => setDemoOpen(false)} />
     </>
   );
 };

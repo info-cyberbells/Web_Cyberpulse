@@ -316,11 +316,7 @@ function HomePage() {
             subTitle: "Pay your team the right way",
             description: "Generate payroll-ready timesheets automatically. Eliminate manual errors and save hours on salary processing.",
             image: salarycalculate,
-            extra: (
-                <Button variant="outlined" sx={styles.button}>
-                    Start Now – It’s Free!
-                </Button>
-            )
+            
         }
     ];
     const testimonials = [
@@ -559,60 +555,215 @@ Other platforms like MyHours, Clockify, and Paymo offer free plans, but none mat
                         </Box>
                     </Box>
 
-                    {/* FAQ Section */}
-                    <Box sx={{ marginTop: '100px', textAlign: 'center' }}>
-                        <Typography sx={{ fontSize: '35px', fontWeight: '700', marginBottom: '20px', color: '#1e293b' }}>
-                            FAQs
-                        </Typography>
-                        <Typography sx={{ marginBottom: '40px' }}>
-                            Some frequently asked questions...
-                        </Typography>
-                        <Box sx={{
-                            width: '100%',
-                            maxWidth: '800px',
-                            margin: '0 auto',
-                            border: '3px solid #2563eb',
-                            borderRadius: '8px',
-                            marginBottom: '15px',
+                    {/* Organisation CTA Section */}
+                    <Box sx={{
+                        margin: '80px auto',
+                        maxWidth: '900px',
+                        px: { xs: 3, md: 6 },
+                        py: { xs: 5, md: 7 },
+                        borderRadius: '24px',
+                        background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%)',
+                        textAlign: 'center',
+                        position: 'relative',
+                        overflow: 'hidden',
+                    }}>
+                        <Box sx={{ position: 'absolute', top: -40, right: -40, width: 180, height: 180, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.06)', pointerEvents: 'none' }} />
+                        <Box sx={{ position: 'absolute', bottom: -30, left: -30, width: 130, height: 130, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.06)', pointerEvents: 'none' }} />
+
+                        <Typography sx={{
+                            fontSize: { xs: '26px', sm: '32px', md: '40px' },
+                            fontWeight: 800,
+                            color: 'white',
+                            lineHeight: 1.2,
+                            fontFamily: "'Inter', sans-serif",
+                            letterSpacing: '-0.02em',
+                            mb: 2,
                         }}>
-                            {faqData.map((item) => (
-                                <Box key={item.id} sx={{ marginBottom: '8px' }}>
-                                    <Box sx={{
-                                        width: '95%',
-                                        backgroundColor: '#2563eb',
-                                        margin: '8px auto',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        padding: '12px',
-                                        borderRadius: '4px',
-                                        cursor: 'pointer'
-                                    }} onClick={() => toggle(item.id)}>
-                                        <Typography sx={{ color: 'white', fontSize: '16px', fontWeight: 600 }}>
-                                            {item.question}
-                                        </Typography>
-                                        {openIds.includes(item.id) ? (
-                                            <North sx={{ color: 'white', fontSize: 20 }} />
-                                        ) : (
-                                            <South sx={{ color: 'white', fontSize: 20 }} />
+                            Your Organisation, Your Rules —{' '}
+                            <span style={{ color: '#bfdbfe' }}>Built to Scale with Your Team.</span>
+                        </Typography>
+
+                        <Typography sx={{
+                            fontSize: { xs: '15px', md: '17px' },
+                            color: 'rgba(255,255,255,0.8)',
+                            fontFamily: "'Inter', sans-serif",
+                            lineHeight: 1.7,
+                            maxWidth: '560px',
+                            margin: '0 auto 32px',
+                        }}>
+                            Set up your organisation in minutes. Manage employees, projects, attendance & more — all under one powerful dashboard.
+                        </Typography>
+
+                        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
+                            <Button
+                                variant="contained"
+                                onClick={() => navigate('/signup')}
+                                sx={{
+                                    backgroundColor: 'white',
+                                    color: '#2563eb',
+                                    borderRadius: '10px',
+                                    fontWeight: 700,
+                                    textTransform: 'none',
+                                    px: 4,
+                                    py: 1.5,
+                                    fontSize: '15px',
+                                    fontFamily: "'Inter', sans-serif",
+                                    boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+                                    '&:hover': { backgroundColor: '#f0f9ff', transform: 'translateY(-2px)', boxShadow: '0 8px 24px rgba(0,0,0,0.2)' },
+                                    transition: 'all 0.2s ease',
+                                }}
+                            >
+                                Create Your Organisation
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                onClick={() => navigate('/login')}
+                                sx={{
+                                    borderColor: 'rgba(255,255,255,0.6)',
+                                    color: 'white',
+                                    borderRadius: '10px',
+                                    fontWeight: 600,
+                                    textTransform: 'none',
+                                    px: 4,
+                                    py: 1.5,
+                                    fontSize: '15px',
+                                    fontFamily: "'Inter', sans-serif",
+                                    '&:hover': { borderColor: 'white', backgroundColor: 'rgba(255,255,255,0.1)' },
+                                    transition: 'all 0.2s ease',
+                                }}
+                            >
+                                Login to Dashboard
+                            </Button>
+                        </Box>
+                    </Box>
+
+                    {/* FAQ Section */}
+                    <Box sx={{ marginTop: '100px', marginBottom: '80px', px: { xs: 2, md: 4 } }}>
+                        {/* Header */}
+                        <Box sx={{ textAlign: 'center', marginBottom: '60px' }}>
+                            <Box sx={{
+                                display: 'inline-block',
+                                backgroundColor: '#eff6ff',
+                                color: '#2563eb',
+                                fontSize: '13px',
+                                fontWeight: 600,
+                                px: 2,
+                                py: 0.6,
+                                borderRadius: '20px',
+                                mb: 2,
+                                fontFamily: "'Inter', sans-serif",
+                                letterSpacing: '0.04em'
+                            }}>
+                                FAQ
+                            </Box>
+                            <Typography sx={{
+                                fontSize: { xs: '28px', md: '38px' },
+                                fontWeight: 700,
+                                color: '#1e293b',
+                                fontFamily: "'Inter', sans-serif",
+                                lineHeight: 1.2,
+                                mb: 1.5
+                            }}>
+                                Frequently Asked Questions
+                            </Typography>
+                            <Typography sx={{
+                                fontSize: '16px',
+                                color: '#64748b',
+                                fontFamily: "'Inter', sans-serif",
+                                maxWidth: '480px',
+                                margin: '0 auto'
+                            }}>
+                                Everything you need to know about CyberPulse.
+                            </Typography>
+                        </Box>
+
+                        {/* FAQ Items */}
+                        <Box sx={{ maxWidth: '760px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            {faqData.map((item) => {
+                                const isOpen = openIds.includes(item.id);
+                                return (
+                                    <Box
+                                        key={item.id}
+                                        sx={{
+                                            borderRadius: '14px',
+                                            border: isOpen ? '1.5px solid #2563eb' : '1.5px solid #e2e8f0',
+                                            backgroundColor: isOpen ? '#f8fbff' : 'white',
+                                            overflow: 'hidden',
+                                            transition: 'all 0.25s ease',
+                                            boxShadow: isOpen ? '0 4px 20px rgba(37,99,235,0.1)' : '0 1px 4px rgba(0,0,0,0.05)',
+                                        }}
+                                    >
+                                        {/* Question Row */}
+                                        <Box
+                                            onClick={() => toggle(item.id)}
+                                            sx={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                padding: '20px 24px',
+                                                cursor: 'pointer',
+                                                gap: 2,
+                                            }}
+                                        >
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                                <Box sx={{
+                                                    width: 32, height: 32, borderRadius: '8px',
+                                                    backgroundColor: isOpen ? '#2563eb' : '#eff6ff',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    flexShrink: 0, transition: 'all 0.25s'
+                                                }}>
+                                                    <Typography sx={{ color: isOpen ? 'white' : '#2563eb', fontWeight: 700, fontSize: '15px', lineHeight: 1 }}>
+                                                        {item.id}
+                                                    </Typography>
+                                                </Box>
+                                                <Typography sx={{
+                                                    fontSize: { xs: '14px', md: '16px' },
+                                                    fontWeight: 600,
+                                                    color: isOpen ? '#2563eb' : '#1e293b',
+                                                    fontFamily: "'Inter', sans-serif",
+                                                    textAlign: 'left',
+                                                    transition: 'color 0.2s'
+                                                }}>
+                                                    {item.question}
+                                                </Typography>
+                                            </Box>
+                                            <Box sx={{
+                                                width: 30, height: 30, borderRadius: '50%',
+                                                backgroundColor: isOpen ? '#2563eb' : '#f1f5f9',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                flexShrink: 0, transition: 'all 0.25s'
+                                            }}>
+                                                {isOpen
+                                                    ? <North sx={{ color: 'white', fontSize: 16 }} />
+                                                    : <South sx={{ color: '#64748b', fontSize: 16 }} />
+                                                }
+                                            </Box>
+                                        </Box>
+
+                                        {/* Answer */}
+                                        {isOpen && (
+                                            <Box sx={{
+                                                px: '24px',
+                                                pb: '20px',
+                                                pt: 0,
+                                                borderTop: '1px solid #e2e8f0',
+                                            }}>
+                                                <Typography sx={{
+                                                    fontSize: '15px',
+                                                    color: '#475569',
+                                                    lineHeight: 1.75,
+                                                    fontFamily: "'Inter', sans-serif",
+                                                    whiteSpace: 'pre-line',
+                                                    pt: 2,
+                                                    textAlign: 'left'
+                                                }}>
+                                                    {item.answer}
+                                                </Typography>
+                                            </Box>
                                         )}
                                     </Box>
-                                    {openIds.includes(item.id) && (
-                                        <Box sx={{
-                                            backgroundColor: '#fff',
-                                            width: '90%',
-                                            margin: '10px auto',
-                                            padding: '15px',
-                                            border: '1px solid #2563eb',
-                                            borderRadius: '4px',
-                                        }}>
-                                            <Typography sx={{ fontSize: '14px', color: '#333', whiteSpace: 'pre-line', textAlign: 'left' }}>
-                                                {item.answer}
-                                            </Typography>
-                                        </Box>
-                                    )}
-                                </Box>
-                            ))}
+                                );
+                            })}
                         </Box>
                     </Box>
 
