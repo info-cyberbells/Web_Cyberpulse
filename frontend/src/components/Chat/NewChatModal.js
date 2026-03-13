@@ -24,6 +24,7 @@ const NewChatModal = ({ open, onClose, onSelectConversation }) => {
 
   const filtered = employees.filter(emp => {
     if (emp._id === currentUser?.id) return false;
+    if (emp.status === 0 || emp.status === "0") return false;
     if (!search) return true;
     return emp.name?.toLowerCase().includes(search.toLowerCase()) ||
            emp.email?.toLowerCase().includes(search.toLowerCase());

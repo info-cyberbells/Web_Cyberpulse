@@ -388,7 +388,7 @@ const LeaveRequests = () => {
                               bgcolor: 'primary.light'
                             }}
                           >
-                            {employee.name.charAt(0).toUpperCase()}
+                            {employee.name?.charAt(0)?.toUpperCase() || '?'}
                           </Avatar>
                           <Typography variant="body2">
                             {employee.name}
@@ -580,7 +580,7 @@ const LeaveRequests = () => {
                           {getLeaveTypeIcon(leave.leaveType)}
                         </Box>
                         <Typography variant="h6" fontWeight="600" color="text.primary">
-                          {leave.leaveType?.charAt(0).toUpperCase() + leave.leaveType?.slice(1)}
+                          {leave.leaveType ? leave.leaveType.charAt(0).toUpperCase() + leave.leaveType.slice(1) : 'N/A'}
                         </Typography>
                         <Chip
                           label={`${calculateDays(leave.startDate, leave.endDate, leave.leaveType)} Day${calculateDays(leave.startDate, leave.endDate, leave.leaveType) > 1 ? 's' : ''}`}

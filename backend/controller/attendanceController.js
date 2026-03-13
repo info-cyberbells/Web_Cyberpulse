@@ -8,6 +8,7 @@ import path from 'path';
 import mongoose from 'mongoose';
 import LeaveRequest from '../model/leaveRequestModel.js';
 import Holiday from "../model/holidayModel.js";
+import OrganizationSettings from "../model/organizationSettingsModel.js";
 import { createNotification } from "../helpers/createNotification.js";
 
 // Helper function to format time for notifications
@@ -2253,21 +2254,42 @@ export const getMonthlyAttendance = async (req, res) => {
 
     const allAttendance = await Attendance.find(attendanceFilter);
 
+    // Fetch organization settings for required working hours
+    let requiredHoursPerDay = 8;
+    if (organizationId) {
+      const orgSettings = await OrganizationSettings.findOne({ organizationId });
+      if (orgSettings?.workingHoursRequired) {
+        requiredHoursPerDay = orgSettings.workingHoursRequired;
+      }
+    }
+
     const allLeaves = await LeaveRequest.find({
-      status: "Approved",
+      status: { $in: ["Approved", "approved", "Pending", "pending"] },
       $or: [
         { startDate: { $lte: endDate }, endDate: { $gte: startDate } }
       ]
+    });
+
+    // Build a Set of holiday date strings for quick lookup
+    // Use local date to match correctly (server timezone = IST where holidays are created)
+    const holidayDatesSet = new Set();
+    holidaysInMonth.forEach(h => {
+      const d = new Date(h.date);
+      const localStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      holidayDatesSet.add(localStr);
     });
 
     const dates = [];
     let current = new Date(startDate);
     while (current <= endDate) {
       const copy = new Date(current);
+      const utcDateStr = copy.toISOString().split("T")[0];
+      const localDateStr = `${copy.getFullYear()}-${String(copy.getMonth() + 1).padStart(2, '0')}-${String(copy.getDate()).padStart(2, '0')}`;
       dates.push({
-        date: copy.toISOString().split("T")[0],
+        date: utcDateStr,
         day: copy.toLocaleDateString("en-US", { weekday: "long" }),
         isWeekend: copy.getUTCDay() === 0 || copy.getUTCDay() === 6,
+        isHoliday: holidayDatesSet.has(localDateStr),
         isPastOrToday: copy <= today,
       });
       current.setUTCDate(current.getUTCDate() + 1);
@@ -2291,10 +2313,29 @@ export const getMonthlyAttendance = async (req, res) => {
     const actualWeekendDays = calculateWeekendDaysInMonth(year, month);
     const totalWorkingDays = totalDaysInMonth - actualWeekendDays - numberOfHolidays;
 
+    // Helper to parse clock time string to Date object for a given date
+    const parseClockTime = (dateStr, timeStr) => {
+      if (!timeStr) return null;
+      try {
+        // Handle ISO format like "2025-03-10T09:30:00.000Z"
+        if (timeStr.includes('T')) {
+          return new Date(timeStr);
+        }
+        // Handle "HH:mm" or "HH:mm:ss" format
+        const parts = timeStr.split(':');
+        const d = new Date(dateStr);
+        d.setHours(parseInt(parts[0]) || 0, parseInt(parts[1]) || 0, parseInt(parts[2]) || 0, 0);
+        return d;
+      } catch {
+        return null;
+      }
+    };
+
     const result = allEmployees.map((employee) => {
       let daysPresent = 0;
       let leavesTaken = 0;
       let daysAbsent = 0;
+      let totalWorkedHours = 0;
 
       const employeeLeaves = allLeaves.filter(
         l => l.employeeId.toString() === employee._id.toString()
@@ -2314,10 +2355,16 @@ export const getMonthlyAttendance = async (req, res) => {
         }
       });
 
-      const attendanceByDate = dates.map(({ date, day, isWeekend, isPastOrToday }) => {
+      // Count working days where employee was present (for required hours calculation)
+      let presentWorkingDays = 0;
+
+      const attendanceByDate = dates.map(({ date, day, isWeekend, isHoliday, isPastOrToday }) => {
         const isLeaveApplied = leaveDates.has(date);
         if (isWeekend) {
-          return { date, day, status: "Weekend", leaveApplied: isLeaveApplied };
+          return { date, day, status: "Weekend", leaveApplied: isLeaveApplied, hoursWorked: 0 };
+        }
+        if (isHoliday) {
+          return { date, day, status: "Holiday", leaveApplied: isLeaveApplied, hoursWorked: 0 };
         }
 
         const attendanceRecord = allAttendance.find(
@@ -2327,6 +2374,20 @@ export const getMonthlyAttendance = async (req, res) => {
         );
 
         const workingDay = attendanceRecord?.workingDay || 0;
+
+        // Calculate hours worked for this day
+        let hoursWorked = 0;
+        if (attendanceRecord?.clockInTime && attendanceRecord?.clockOutTime) {
+          const clockIn = parseClockTime(date, attendanceRecord.clockInTime);
+          const clockOut = parseClockTime(date, attendanceRecord.clockOutTime);
+          if (clockIn && clockOut && clockOut > clockIn) {
+            hoursWorked = (clockOut - clockIn) / (1000 * 60 * 60);
+            // Subtract break time (stored in minutes)
+            const breakMinutes = attendanceRecord.breakTime || 0;
+            hoursWorked -= breakMinutes / 60;
+            if (hoursWorked < 0) hoursWorked = 0;
+          }
+        }
 
         let status = "Absent";
         let presence = 0;
@@ -2355,6 +2416,10 @@ export const getMonthlyAttendance = async (req, res) => {
 
         if (isPastOrToday) {
           daysPresent += presence;
+          if (presence > 0) {
+            totalWorkedHours += hoursWorked;
+            presentWorkingDays++;
+          }
         }
 
         return {
@@ -2362,12 +2427,27 @@ export const getMonthlyAttendance = async (req, res) => {
           day,
           status,
           leaveApplied: isLeaveApplied,
+          hoursWorked: Math.round(hoursWorked * 100) / 100,
         };
       });
 
       // Round to nearest valid fraction (0, 0.25, 0.5, 0.75, 1)
       // This ensures daysPresent is always a multiple of 0.25
       const totalDaysPresent = Math.round(daysPresent * 4) / 4;
+
+      // Calculate required hours based on days present
+      const totalRequiredHours = presentWorkingDays * requiredHoursPerDay;
+      const hoursDiff = totalWorkedHours - totalRequiredHours;
+
+      // Extra hours: only count if more than 0.5 hours extra, then include full amount
+      // Deficit hours: any negative difference
+      let extraHours = 0;
+      let deficitHours = 0;
+      if (hoursDiff > 0.5) {
+        extraHours = Math.round(hoursDiff * 100) / 100;
+      } else if (hoursDiff < 0) {
+        deficitHours = Math.round(Math.abs(hoursDiff) * 100) / 100;
+      }
 
       return {
         employeeId: employee._id,
@@ -2376,6 +2456,10 @@ export const getMonthlyAttendance = async (req, res) => {
         daysPresent: totalDaysPresent,
         leavesTaken,
         daysAbsent,
+        totalWorkedHours: Math.round(totalWorkedHours * 100) / 100,
+        totalRequiredHours,
+        extraHours,
+        deficitHours,
         attendance: attendanceByDate,
         image: processImageUrl(employee.image),
       };
@@ -2387,6 +2471,7 @@ export const getMonthlyAttendance = async (req, res) => {
       actualWeekendDays,
       numberOfHolidays,
       totalWorkingDays,
+      requiredHoursPerDay,
       employees: result,
     });
   } catch (error) {

@@ -111,19 +111,35 @@ const TaskAttendanceManagement = ({
       if (task.status === TaskStatus.IN_PROGRESS && currentAttendance?.Employeestatus !== "on break" && !isClockedOut) {
         setActiveTaskId(task._id);
 
-        // Calculate time elapsed since the last work session started
-        // Use the last work session's startTime for accurate calculation
-        let elapsedFromSession = 0;
+        // Calculate accurate duration on refresh by summing completed sessions
+        // + elapsed time from current running session to avoid double counting
+        // (auto-save updates task.duration which already includes current session time)
+        let totalDurationWithClosedTime = 0;
         if (task.workSessions && task.workSessions.length > 0) {
+          // Sum duration of all completed sessions (with endTime)
+          const completedSessionsDuration = task.workSessions.reduce((sum, session) => {
+            if (session.startTime && session.endTime) {
+              if (session.duration) return sum + session.duration;
+              const start = new Date(session.startTime).getTime();
+              const end = new Date(session.endTime).getTime();
+              return sum + Math.max(0, Math.floor((end - start) / 1000));
+            }
+            return sum;
+          }, 0);
+
+          // Add elapsed time from current running session
           const lastSession = task.workSessions[task.workSessions.length - 1];
+          let currentSessionElapsed = 0;
           if (lastSession.startTime && !lastSession.endTime) {
             const sessionStart = new Date(lastSession.startTime).getTime();
-            elapsedFromSession = Math.max(0, Math.floor((Date.now() - sessionStart) / 1000));
+            currentSessionElapsed = Math.max(0, Math.floor((Date.now() - sessionStart) / 1000));
           }
-        }
 
-        // Backend duration has accumulated past sessions, add current running session elapsed
-        const totalDurationWithClosedTime = (task.duration || 0) + elapsedFromSession;
+          totalDurationWithClosedTime = completedSessionsDuration + currentSessionElapsed;
+        } else {
+          // No work sessions, fallback to stored duration
+          totalDurationWithClosedTime = task.duration || 0;
+        }
 
         initialTimers[task._id] = {
           startTime: Date.now(),

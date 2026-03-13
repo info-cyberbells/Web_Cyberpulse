@@ -42,7 +42,10 @@ import {
   ViewModule as GridIcon,
   Close as CloseIcon,
   Person as PersonIcon,
-  EventAvailable as EventAvailableIcon
+  EventAvailable as EventAvailableIcon,
+  TrendingUp as TrendingUpIcon,
+  TrendingDown as TrendingDownIcon,
+  AccessTime as AccessTimeIcon,
 } from "@mui/icons-material";
 import { Collapse } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -90,6 +93,11 @@ const StatusChip = styled(Chip)(({ theme, status }) => {
       color = theme.palette.text.secondary;
       bgColor = alpha(theme.palette.grey[500], 0.12);
       borderColor = alpha(theme.palette.grey[500], 0.3);
+      break;
+    case "Holiday":
+      color = theme.palette.warning.dark;
+      bgColor = alpha(theme.palette.warning.main, 0.12);
+      borderColor = alpha(theme.palette.warning.main, 0.3);
       break;
     default:
       color = theme.palette.grey[700];
@@ -185,6 +193,11 @@ const CalendarDay = styled(Box)(({ theme, status }) => {
       bgColor = alpha(theme.palette.grey[400], 0.15);
       textColor = theme.palette.text.secondary;
       borderColor = alpha(theme.palette.grey[400], 0.3);
+      break;
+    case "Holiday":
+      bgColor = alpha(theme.palette.warning.main, 0.12);
+      textColor = theme.palette.warning.dark;
+      borderColor = alpha(theme.palette.warning.main, 0.3);
       break;
     default:
       bgColor = theme.palette.background.paper;
@@ -341,7 +354,7 @@ const MonthlyAttendance = () => {
     try {
       const data = [
         // Header row
-        ["Name", "Email", "Present Days", "Absent Days", "Leaves Taken"],
+        ["Name", "Email", "Present Days", "Absent Days", "Leaves Taken", "Extra Hours", "Deficit Hours"],
         // Data rows
         ...attendanceData.map((employee) => [
           employee.name || "N/A",
@@ -349,6 +362,8 @@ const MonthlyAttendance = () => {
           employee.daysPresent?.toString() || "0",
           employee.daysAbsent?.toString() || "0",
           employee.leavesTaken?.toString() || "0",
+          employee.extraHours > 0 ? `${Math.floor(employee.extraHours)}h ${Math.round((employee.extraHours % 1) * 60)}m` : "—",
+          employee.deficitHours > 0 ? `${Math.floor(employee.deficitHours)}h ${Math.round((employee.deficitHours % 1) * 60)}m` : "—",
         ]),
       ];
 
@@ -378,8 +393,8 @@ const MonthlyAttendance = () => {
       };
 
       // Style the table headers (bold) - Headers are in row 5 (index 4 in zero-based indexing)
-      const headerRowIndex = 4; // Row 5 (A5 to E5)
-      const columns = ["A", "B", "C", "D", "E"];
+      const headerRowIndex = 4; // Row 5 (A5 to G5)
+      const columns = ["A", "B", "C", "D", "E", "F", "G"];
       columns.forEach((col, index) => {
         const cellAddress = `${col}${headerRowIndex + 1}`; // e.g., A5, B5, etc.
         if (!ws[cellAddress]) ws[cellAddress] = { v: data[0][index] }; // Ensure cell exists
@@ -396,12 +411,14 @@ const MonthlyAttendance = () => {
         { wch: 15 }, // Present Days
         { wch: 15 }, // Absent Days
         { wch: 15 }, // Leaves Taken
+        { wch: 15 }, // Extra Hours
+        { wch: 15 }, // Deficit Hours
       ];
 
       // Merge cells for the title and total working days
       ws["!merges"] = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 4 } }, // Merge A1 to E1 for title
-        { s: { r: 2, c: 0 }, e: { r: 2, c: 4 } }, // Merge A3 to E3 for total working days
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } }, // Merge A1 to G1 for title
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 6 } }, // Merge A3 to G3 for total working days
       ];
 
       // Debug: Log the worksheet to verify data and styles
@@ -472,6 +489,15 @@ const MonthlyAttendance = () => {
     );
   }
 
+  // Format decimal hours to "Xh Ym" format
+  const formatHoursMinutes = (decimalHours) => {
+    const hours = Math.floor(decimalHours);
+    const minutes = Math.round((decimalHours - hours) * 60);
+    if (hours === 0) return `${minutes}m`;
+    if (minutes === 0) return `${hours}h`;
+    return `${hours}h ${minutes}m`;
+  };
+
   const getStatusIcon = (status) => {
     switch (status) {
       case "Present":
@@ -482,6 +508,8 @@ const MonthlyAttendance = () => {
         return <EventAvailableIcon fontSize="small" />;
       case "Weekend":
         return <CalendarIcon fontSize="small" />;
+      case "Holiday":
+        return <EventAvailableIcon fontSize="small" />;
       default:
         return <PersonIcon fontSize="small" />;
     }
@@ -596,6 +624,8 @@ const MonthlyAttendance = () => {
                       <TableCell align="center">Present</TableCell>
                       <TableCell align="center">Absent</TableCell>
                       <TableCell align="center">Leaves</TableCell>
+                      <TableCell align="center">Extra Hours</TableCell>
+                      <TableCell align="center">Deficit Hours</TableCell>
                     </TableRow>
                   </StyledTableHead>
                   <TableBody>
@@ -684,6 +714,44 @@ const MonthlyAttendance = () => {
                             {employee.leavesTaken}
                           </Box>
                         </TableCell>
+                        <TableCell align="center">
+                          <Box
+                            sx={{
+                              display: 'inline-flex',
+                              justifyContent: 'center',
+                              alignItems: 'center',
+                              gap: 0.5,
+                              minWidth: '40px',
+                              height: '28px',
+                              color: employee.extraHours > 0 ? '#2e7d32' : '#9e9e9e',
+                              fontWeight: 600,
+                              fontSize: '0.975rem',
+                              background: 'transparent',
+                            }}
+                          >
+                            {employee.extraHours > 0 && <TrendingUpIcon sx={{ fontSize: 16 }} />}
+                            {employee.extraHours > 0 ? `${formatHoursMinutes(employee.extraHours)}` : '—'}
+                          </Box>
+                        </TableCell>
+                        <TableCell align="center">
+                          <Box
+                            sx={{
+                              display: 'inline-flex',
+                              justifyContent: 'center',
+                              alignItems: 'center',
+                              gap: 0.5,
+                              minWidth: '40px',
+                              height: '28px',
+                              color: employee.deficitHours > 0 ? '#c62828' : '#9e9e9e',
+                              fontWeight: 600,
+                              fontSize: '0.975rem',
+                              background: 'transparent',
+                            }}
+                          >
+                            {employee.deficitHours > 0 && <TrendingDownIcon sx={{ fontSize: 16 }} />}
+                            {employee.deficitHours > 0 ? `${formatHoursMinutes(employee.deficitHours)}` : '—'}
+                          </Box>
+                        </TableCell>
                       </StyledTableRow>
                     ))}
                   </TableBody>
@@ -739,7 +807,7 @@ const MonthlyAttendance = () => {
               <DialogContent dividers sx={{ p: 3 }}>
                 {/* Summary Stats */}
                 <Grid container spacing={3} sx={{ mb: 4 }}>
-                  <Grid item xs={12} md={4}>
+                  <Grid item xs={6} md={4}>
                     <StyledStatCard colorType="present">
                       <Typography variant="h3" fontWeight="bold">
                         {selectedEmployee.daysPresent}
@@ -752,7 +820,7 @@ const MonthlyAttendance = () => {
                       </Box>
                     </StyledStatCard>
                   </Grid>
-                  <Grid item xs={12} md={4}>
+                  <Grid item xs={6} md={4}>
                     <StyledStatCard colorType="absent">
                       <Typography variant="h3" fontWeight="bold">
                         {selectedEmployee.daysAbsent}
@@ -765,7 +833,7 @@ const MonthlyAttendance = () => {
                       </Box>
                     </StyledStatCard>
                   </Grid>
-                  <Grid item xs={12} md={4}>
+                  <Grid item xs={6} md={4}>
                     <StyledStatCard colorType="leave">
                       <Typography variant="h3" fontWeight="bold">
                         {selectedEmployee.leavesTaken}
@@ -777,6 +845,82 @@ const MonthlyAttendance = () => {
                         </Typography>
                       </Box>
                     </StyledStatCard>
+                  </Grid>
+                  {selectedEmployee.extraHours > 0 && (
+                    <Grid item xs={6} md={4}>
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          p: 2.5,
+                          textAlign: 'center',
+                          borderRadius: 1,
+                          bgcolor: alpha('#2e7d32', 0.08),
+                          borderTop: `3px solid ${alpha('#2e7d32', 0.4)}`,
+                          transition: 'transform 0.2s',
+                          '&:hover': { transform: 'translateY(-4px)', boxShadow: theme.shadows[4] }
+                        }}
+                      >
+                        <Typography variant="h4" fontWeight="bold" color="#2e7d32">
+                          {formatHoursMinutes(selectedEmployee.extraHours)}
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mt: 1 }}>
+                          <TrendingUpIcon sx={{ mr: 1, color: '#2e7d32' }} />
+                          <Typography variant="h6" fontWeight={500} color="#2e7d32">
+                            Extra Hours
+                          </Typography>
+                        </Box>
+                      </Paper>
+                    </Grid>
+                  )}
+                  {selectedEmployee.deficitHours > 0 && (
+                    <Grid item xs={6} md={4}>
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          p: 2.5,
+                          textAlign: 'center',
+                          borderRadius: 1,
+                          bgcolor: alpha('#c62828', 0.08),
+                          borderTop: `3px solid ${alpha('#c62828', 0.4)}`,
+                          transition: 'transform 0.2s',
+                          '&:hover': { transform: 'translateY(-4px)', boxShadow: theme.shadows[4] }
+                        }}
+                      >
+                        <Typography variant="h4" fontWeight="bold" color="#c62828">
+                          {formatHoursMinutes(selectedEmployee.deficitHours)}
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mt: 1 }}>
+                          <TrendingDownIcon sx={{ mr: 1, color: '#c62828' }} />
+                          <Typography variant="h6" fontWeight={500} color="#c62828">
+                            Deficit Hours
+                          </Typography>
+                        </Box>
+                      </Paper>
+                    </Grid>
+                  )}
+                  <Grid item xs={6} md={4}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2.5,
+                        textAlign: 'center',
+                        borderRadius: 1,
+                        bgcolor: alpha(theme.palette.primary.main, 0.08),
+                        borderTop: `3px solid ${alpha(theme.palette.primary.main, 0.4)}`,
+                        transition: 'transform 0.2s',
+                        '&:hover': { transform: 'translateY(-4px)', boxShadow: theme.shadows[4] }
+                      }}
+                    >
+                      <Typography variant="h4" fontWeight="bold" color="primary.main">
+                        {formatHoursMinutes(selectedEmployee.totalWorkedHours || 0)}
+                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mt: 1 }}>
+                        <AccessTimeIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
+                        <Typography variant="h6" fontWeight={500} color="primary.main">
+                          Total Worked
+                        </Typography>
+                      </Box>
+                    </Paper>
                   </Grid>
                 </Grid>
 

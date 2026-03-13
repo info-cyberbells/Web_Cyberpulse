@@ -72,6 +72,7 @@ const WfhCreditEvaluation = () => {
   const dispatch = useDispatch();
   const { loading, successMessage, error, credits } = useSelector((state) => state.wfhCredit);
   const { employeeList } = useSelector((state) => state.employees);
+  const activeEmployeeList = (Array.isArray(employeeList) ? employeeList : []).filter(emp => emp && emp.status !== 0 && emp.status !== "0");
 
   const currentDate = new Date();
   const [selectedEmployee, setSelectedEmployee] = useState("");
@@ -216,8 +217,8 @@ const WfhCreditEvaluation = () => {
 
   // Employee list filtered to type 2
   const employees = useMemo(() => {
-    return (Array.isArray(employeeList) ? employeeList : []).filter((emp) => emp.type === 2);
-  }, [employeeList]);
+    return activeEmployeeList.filter((emp) => emp.type === 2);
+  }, [activeEmployeeList]);
 
   return (
     <Box sx={{ p: 3, maxWidth: 900, mx: "auto" }}>

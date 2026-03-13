@@ -249,4 +249,11 @@ const employeeSlice = createSlice({
 
 export const { clearSuccessMessage, setAttendanceData, setTasksData } =
   employeeSlice.actions;
+
+// Selector: active employees only (status !== 0 / "0") — use in dropdowns
+export const selectActiveEmployees = (state) =>
+  (state.employees.employeeList || []).filter(
+    (emp) => emp && emp.status !== 0 && emp.status !== "0"
+  );
+
 export default employeeSlice.reducer;
