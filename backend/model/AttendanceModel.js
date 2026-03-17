@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { encryptTime, decryptTime } from "../utils/timeEncryption.js";
 
 const AttendanceSchema = new mongoose.Schema({
   employeeId: {
@@ -40,6 +41,27 @@ const AttendanceSchema = new mongoose.Schema({
     enum: ["active", "on break", "clocked out"],
     default: "active",
   },
+});
+
+// Encrypt clockInTime and clockOutTime before saving
+AttendanceSchema.pre('save', function (next) {
+  if (this.isModified('clockInTime') && this.clockInTime) {
+    this.clockInTime = encryptTime(this.clockInTime);
+  }
+  if (this.isModified('clockOutTime') && this.clockOutTime) {
+    this.clockOutTime = encryptTime(this.clockOutTime);
+  }
+  next();
+});
+
+// Decrypt clockInTime and clockOutTime after loading from DB
+AttendanceSchema.post('init', function (doc) {
+  if (doc.clockInTime) {
+    doc.clockInTime = decryptTime(doc.clockInTime);
+  }
+  if (doc.clockOutTime) {
+    doc.clockOutTime = decryptTime(doc.clockOutTime);
+  }
 });
 
 const Attendance = mongoose.model("Attendance", AttendanceSchema, "Attendance");

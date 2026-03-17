@@ -10,6 +10,7 @@ import LeaveRequest from '../model/leaveRequestModel.js';
 import Holiday from "../model/holidayModel.js";
 import OrganizationSettings from "../model/organizationSettingsModel.js";
 import { createNotification } from "../helpers/createNotification.js";
+import { decryptTime } from "../utils/timeEncryption.js";
 
 // Helper function to format time for notifications
 const formatNotificationTime = (timestamp) => {
@@ -627,7 +628,11 @@ export const getAllEmployeesAttendanceAndTasksByDate = async (req, res) => {
 
 
     const lastAttendanceMap = new Map(
-      lastAttendanceRecords.map((record) => [record._id?.toString() || '', record])
+      lastAttendanceRecords.map((record) => [record._id?.toString() || '', {
+        ...record,
+        lastClockIn: decryptTime(record.lastClockIn),
+        lastClockOut: decryptTime(record.lastClockOut),
+      }])
     );
 
     const todayAttendanceMap = new Map(
