@@ -70,7 +70,7 @@ export const login = async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign(
-      { id: employee._id, email: employee.email, type: employee.type },
+      { id: employee._id, email: employee.email, type: employee.type, organizationId: employee.organizationId },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );

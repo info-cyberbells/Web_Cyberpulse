@@ -48,13 +48,28 @@ export const updateOrgSettings = async (req, res) => {
       });
     }
 
-    const { workingHoursRequired, maxBreakDurationMinutes, minClockOutHour, minClockOutMinute } = req.body;
+    const {
+      workingHoursRequired,
+      maxBreakDurationMinutes,
+      minClockOutHour,
+      minClockOutMinute,
+      geofenceEnabled,
+      geofenceLatitude,
+      geofenceLongitude,
+      geofenceRadius,
+      wfhEnabled,
+    } = req.body;
 
     const updateData = {};
     if (workingHoursRequired !== undefined) updateData.workingHoursRequired = workingHoursRequired;
     if (maxBreakDurationMinutes !== undefined) updateData.maxBreakDurationMinutes = maxBreakDurationMinutes;
     if (minClockOutHour !== undefined) updateData.minClockOutHour = minClockOutHour;
     if (minClockOutMinute !== undefined) updateData.minClockOutMinute = minClockOutMinute;
+    if (geofenceEnabled !== undefined) updateData.geofenceEnabled = geofenceEnabled;
+    if (geofenceLatitude !== undefined) updateData.geofenceLatitude = geofenceLatitude;
+    if (geofenceLongitude !== undefined) updateData.geofenceLongitude = geofenceLongitude;
+    if (geofenceRadius !== undefined) updateData.geofenceRadius = geofenceRadius;
+    if (wfhEnabled !== undefined) updateData.wfhEnabled = wfhEnabled;
 
     const settings = await OrganizationSettings.findOneAndUpdate(
       { organizationId: orgId },

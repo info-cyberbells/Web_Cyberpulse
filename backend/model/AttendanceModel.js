@@ -36,6 +36,16 @@ const AttendanceSchema = new mongoose.Schema({
     default: null
   },
 
+  isWFH: {
+    type: Boolean,
+    default: false,
+  },
+
+  clockInLocation: {
+    latitude: { type: Number, default: null },
+    longitude: { type: Number, default: null },
+  },
+
   Employeestatus: {
     type: String,
     enum: ["active", "on break", "clocked out"],

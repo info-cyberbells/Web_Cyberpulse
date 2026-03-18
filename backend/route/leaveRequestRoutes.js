@@ -8,8 +8,10 @@ import {
   checkWfhEligibility,
   checkBirthdayLeaveEligibility,
 } from "../controller/leaveRequestController.js";
+import { authenticateToken } from "../middleware/authMiddleware.js";
 
 const routerLeaveRequest = express.Router();
+routerLeaveRequest.use(authenticateToken);
 
 // Create a Leave Request
 routerLeaveRequest.post("/add", addLeaveRequest);

@@ -105,6 +105,19 @@ export const fetchClockDataMonthly = async (req, res) => {
   }
 };
 
+// Haversine formula — returns distance in metres between two lat/lng points
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371000;
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(Δφ / 2) ** 2 +
+    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
 export const addAttendance = async (req, res) => {
   try {
     const {
@@ -116,6 +129,8 @@ export const addAttendance = async (req, res) => {
       clockInSelfie,
       clockOutSelfie,
       organizationId,
+      isWFH,
+      clockInLocation,
     } = req.body;
 
     const existingAttendance = await Attendance.findOne({
@@ -128,6 +143,41 @@ export const addAttendance = async (req, res) => {
         message: 'Attendance already exists for this date',
         attendance: existingAttendance
       });
+    }
+
+    // Platform check — ios, android, mobile-browser require location; desktop web skips
+    const isMobile = platform === 'ios' || platform === 'android' || platform === 'mobile';
+    if (isMobile && !isWFH) {
+      // Location is mandatory on mobile regardless of geofence settings
+      if (!clockInLocation?.latitude || !clockInLocation?.longitude) {
+        return res.status(400).json({
+          message: 'Location is required to clock in from mobile. Please enable location services.',
+        });
+      }
+
+      // Geofence distance check — if org has geofence enabled
+      const orgId = req.user?.organizationId;
+      if (orgId) {
+        const orgSettings = await OrganizationSettings.findOne({ organizationId: orgId });
+        if (
+          orgSettings?.geofenceEnabled &&
+          orgSettings?.geofenceLatitude != null &&
+          orgSettings?.geofenceLongitude != null
+        ) {
+          const distance = calculateDistance(
+            clockInLocation.latitude,
+            clockInLocation.longitude,
+            orgSettings.geofenceLatitude,
+            orgSettings.geofenceLongitude
+          );
+          const radius = orgSettings.geofenceRadius || 100;
+          if (distance > radius) {
+            return res.status(400).json({
+              message: `You are ${Math.round(distance)}m away from the office. You must be within ${radius}m to clock in.`,
+            });
+          }
+        }
+      }
     }
 
     const fullUrl = req.protocol + '://' + req.get('host');
@@ -158,6 +208,8 @@ export const addAttendance = async (req, res) => {
       clockOutTime,
       clockInSelfie: clockInImagePath,
       clockOutSelfie: clockOutImagePath,
+      isWFH: isWFH || false,
+      clockInLocation: clockInLocation || undefined,
       ...(organizationId && { organizationId }),
     });
 
@@ -187,12 +239,17 @@ export const addAttendance = async (req, res) => {
 
 export const getAttendanceAndTasksByEmployeeAndDate = async (req, res) => {
   try {
-    const { employeeId, date } = req.query; // Expecting employeeId and date as query parameters
-    // Validate inputs
-    // if (!employeeId || !date) {
-    //     return res.status(400).json({ message: 'Employee ID and date are required' });
-    // }
-    // Find attendance for the specified employee and date
+    const { employeeId, date } = req.query;
+    const orgId = req.user?.organizationId;
+
+    // Validate that the requested employee belongs to the same org
+    if (orgId && employeeId) {
+      const emp = await Employee.findById(employeeId).select('organizationId');
+      if (!emp || emp.organizationId?.toString() !== orgId?.toString()) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+    }
+
     const attendance = await Attendance.findOne({ employeeId, date }).populate('employeeId', 'name');
     // Fetch tasks for the specified employee and date
     const tasks = await Task.find({
@@ -1381,7 +1438,9 @@ export const fetchAllAttendanceByDate = async (req, res) => {
 
 export const fetchAllAttendance = async (req, res) => {
   try {
-    const attendanceRecords = await Attendance.find().populate('employeeId', 'name');
+    const orgId = req.user?.organizationId;
+    if (!orgId) return res.status(403).json({ message: 'Organization context missing' });
+    const attendanceRecords = await Attendance.find({ organizationId: orgId }).populate('employeeId', 'name');
     if (!attendanceRecords.length) {
       return res.status(404).json({ message: 'No attendance records found' });
     }
@@ -1393,10 +1452,15 @@ export const fetchAllAttendance = async (req, res) => {
 
 export const getAttendanceById = async (req, res) => {
   try {
+    const orgId = req.user?.organizationId;
     const attendance = await Attendance.findById(req.params.id).populate('employeeId', 'name');
 
     if (!attendance) {
       return res.status(404).json({ message: 'Attendance not found' });
+    }
+
+    if (orgId && attendance.organizationId?.toString() !== orgId?.toString()) {
+      return res.status(403).json({ message: 'Access denied' });
     }
 
     res.status(200).json({ attendance });

@@ -7,21 +7,15 @@ import { createNotificationForAll } from "../helpers/createNotification.js";
 // Create Announcement
 export const addAnnouncement = async (req, res) => {
   try {
-    const { type, description, date, createdBy, organizationId } = req.body;
+    const { type, description, date, createdBy } = req.body;
+    const organizationId = req.user?.organizationId;
 
     if (!type || !description || !date) {
       return res.status(400).json({ error: 'Required fields are missing' });
     }
 
-    if (organizationId) {
-      if (!mongoose.Types.ObjectId.isValid(organizationId)) {
-        return res.status(400).json({ error: 'Invalid organizationId format' });
-      }
-
-      const orgExists = await Organization.findById(organizationId);
-      if (!orgExists) {
-        return res.status(400).json({ error: 'Organization not found' });
-      }
+    if (!organizationId) {
+      return res.status(403).json({ error: 'Organization context missing' });
     }
 
     const newAnnouncement = new Announcement({
@@ -66,13 +60,11 @@ export const addAnnouncement = async (req, res) => {
 // Get All Announcements
 export const fetchAllAnnouncements = async (req, res) => {
   try {
-    const { organizationId } = req.query;
+    const organizationId = req.user?.organizationId;
 
-    if (organizationId && !mongoose.Types.ObjectId.isValid(organizationId)) {
-      return res.status(400).json({ success: false, error: 'Invalid organizationId format' });
-    }
+    if (!organizationId) return res.status(403).json({ success: false, error: 'Organization context missing' });
 
-    const query = organizationId ? { organizationId: new mongoose.Types.ObjectId(organizationId) } : {};
+    const query = { organizationId: new mongoose.Types.ObjectId(organizationId) };
 
     const announcements = await Announcement.find(query)
       .populate('createdBy', '_id name')
@@ -106,10 +98,15 @@ export const fetchAllAnnouncements = async (req, res) => {
 // Get Announcement by ID
 export const getAnnouncementById = async (req, res) => {
   try {
+    const orgId = req.user?.organizationId;
     const announcement = await Announcement.findById(req.params.id).populate('createdBy', 'name');
 
     if (!announcement) {
       return res.status(404).json({ message: 'Announcement not found' });
+    }
+
+    if (orgId && announcement.organizationId?.toString() !== orgId.toString()) {
+      return res.status(403).json({ message: 'Access denied' });
     }
 
     res.status(200).json({ announcement });
@@ -123,8 +120,9 @@ export const updateAnnouncement = async (req, res) => {
   try {
     const { type, description, date } = req.body;
 
-    const updatedAnnouncement = await Announcement.findByIdAndUpdate(
-      req.params.id,
+    const orgId = req.user?.organizationId;
+    const updatedAnnouncement = await Announcement.findOneAndUpdate(
+      { _id: req.params.id, ...(orgId ? { organizationId: orgId } : {}) },
       { type, description, date },
       { new: true, runValidators: true }
     );
@@ -144,7 +142,11 @@ export const updateAnnouncement = async (req, res) => {
 // Delete Announcement
 export const deleteAnnouncement = async (req, res) => {
   try {
-    const deletedAnnouncement = await Announcement.findByIdAndDelete(req.params.id);
+    const orgId = req.user?.organizationId;
+    const deletedAnnouncement = await Announcement.findOneAndDelete({
+      _id: req.params.id,
+      ...(orgId ? { organizationId: orgId } : {})
+    });
 
     if (!deletedAnnouncement) {
       return res.status(404).json({ message: 'Announcement not found' });
@@ -160,9 +162,10 @@ export const deleteAnnouncement = async (req, res) => {
 
 export const getAllEmployeesBasicDetails = async (req, res) => {
 
-  const organizationId = req.query.organizationId;
+  const organizationId = req.user?.organizationId;
 
   try {
+    if (!organizationId) return res.status(403).json({ success: false, message: 'Organization context missing' });
     // Get the base URL dynamically from the request
     const protocol = req.protocol;
     const host = req.get('host');
@@ -177,11 +180,7 @@ export const getAllEmployeesBasicDetails = async (req, res) => {
       return `${baseUrl}${imagePath}`;
     };
 
-    const filter = { status: { $ne: "0" } };
-
-    if (organizationId) {
-      filter.organizationId = organizationId;
-    }
+    const filter = { status: { $ne: "0" }, organizationId };
 
     const employees = await Employee.find(
       filter,

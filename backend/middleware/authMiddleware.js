@@ -17,6 +17,7 @@ export const authenticateToken = (req, res, next) => {
       id: decoded.id,
       email: decoded.email,
       type: decoded.type,
+      organizationId: decoded.organizationId,
     };
 
     next();

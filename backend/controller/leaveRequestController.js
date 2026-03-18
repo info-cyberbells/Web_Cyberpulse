@@ -28,7 +28,8 @@ function calculateLeaveDeduction(type, startDate, endDate) {
 
 export const addLeaveRequest = async (req, res) => {
   try {
-    const { employeeId, startDate, endDate, leaveType, reason, organizationId, halfDayType, startTime, endTime } = req.body;
+    const { employeeId, startDate, endDate, leaveType, reason, halfDayType, startTime, endTime } = req.body;
+    const organizationId = req.user?.organizationId;
 
     // Validate required fields
     if (!employeeId || !startDate || !endDate || !leaveType || !reason) {
@@ -68,6 +69,21 @@ export const addLeaveRequest = async (req, res) => {
       return res.status(404).json({
         success: false,
         error: "Employee not found"
+      });
+    }
+
+    // Duplicate request check — prevent same leave from being submitted twice
+    const duplicate = await LeaveRequest.findOne({
+      employeeId,
+      leaveType,
+      startDate: start,
+      endDate: end,
+      status: 'pending',
+    });
+    if (duplicate) {
+      return res.status(409).json({
+        success: false,
+        error: "A pending leave request for the same dates and type already exists"
       });
     }
 
@@ -236,13 +252,13 @@ export const addLeaveRequest = async (req, res) => {
 // Get All Leave Requests
 export const getAllLeaveRequests = async (req, res) => {
   try {
-    const { organizationId, department } = req.query;
+    const { department } = req.query;
+    const organizationId = req.user?.organizationId;
     const baseUrl = `${req.protocol}://${req.get("host")}`;
 
-    const query = {};
-    if (organizationId) {
-      query.organizationId = organizationId;
-    }
+    if (!organizationId) return res.status(403).json({ success: false, error: 'Organization context missing' });
+
+    const query = { organizationId };
 
     // ✅ Check if department has type: 3 employee before filtering
     let applyDeptFilter = false;
@@ -350,13 +366,19 @@ export const getLeaveRequestById = async (req, res) => {
       });
     }
 
+    const orgId = req.user?.organizationId;
+
     // Get employee info first
-    const employee = await Employee.findById(id).select('name email leaveQuota');
+    const employee = await Employee.findById(id).select('name email leaveQuota organizationId');
     if (!employee) {
       return res.status(404).json({
         success: false,
         error: "Employee not found"
       });
+    }
+
+    if (orgId && employee.organizationId?.toString() !== orgId.toString()) {
+      return res.status(403).json({ success: false, error: 'Access denied' });
     }
 
     // Then get leave requests
@@ -398,9 +420,14 @@ export const updateLeaveRequest = async (req, res) => {
       return res.status(400).json({ success: false, error: "Invalid ID" });
     }
 
+    const orgId = req.user?.organizationId;
     const leaveRequest = await LeaveRequest.findById(id);
     if (!leaveRequest) {
       return res.status(404).json({ success: false, error: "Leave Request not found" });
+    }
+
+    if (orgId && leaveRequest.organizationId?.toString() !== orgId.toString()) {
+      return res.status(403).json({ success: false, error: 'Access denied' });
     }
 
     const employee = await Employee.findById(leaveRequest.employeeId);
@@ -484,9 +511,14 @@ export const deleteLeaveRequest = async (req, res) => {
       return res.status(400).json({ success: false, error: "Invalid ID" });
     }
 
+    const orgId = req.user?.organizationId;
     const leaveRequest = await LeaveRequest.findById(id);
     if (!leaveRequest) {
       return res.status(404).json({ success: false, error: "Leave Request not found" });
+    }
+
+    if (orgId && leaveRequest.organizationId?.toString() !== orgId.toString()) {
+      return res.status(403).json({ success: false, error: 'Access denied' });
     }
 
     const employee = await Employee.findById(leaveRequest.employeeId);

@@ -31,6 +31,27 @@ const organizationSettingsSchema = new mongoose.Schema(
       min: 0,
       max: 59,
     },
+
+    geofenceEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    geofenceLatitude: {
+      type: Number,
+      default: null,
+    },
+    geofenceLongitude: {
+      type: Number,
+      default: null,
+    },
+    geofenceRadius: {
+      type: Number,
+      default: 100, // metres
+    },
+    wfhEnabled: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true }
 );

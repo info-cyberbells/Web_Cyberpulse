@@ -1,7 +1,9 @@
 import express from 'express';
 import { addAnnouncement, fetchAllAnnouncements,getAllEmployeesBasicDetails, getAnnouncementById, updateAnnouncement, deleteAnnouncement } from '../controller/announcementController.js';
+import { authenticateToken } from '../middleware/authMiddleware.js';
 
 const routerAnnouncement = express.Router();
+routerAnnouncement.use(authenticateToken);
 
 // Create an Announcement
 routerAnnouncement.post('/add', addAnnouncement);

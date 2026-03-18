@@ -70,9 +70,11 @@ export const addTask = async (req, res) => {
       projectName,
       status = 'Pending',
       estimatedHours = 0,
-      organizationId,
       estimatedMinutes = 0
     } = req.body;
+
+    const orgId = req.user?.organizationId;
+    if (!orgId) return res.status(403).json({ success: false, message: 'Organization context missing' });
 
     const currentTime = getCurrentISTTime();
 
@@ -85,11 +87,9 @@ export const addTask = async (req, res) => {
       assignedDate: currentTime,
       startTime: status === 'In Progress' ? currentTime : null,
       estimatedHours: Number(estimatedHours) || 0,
-      estimatedMinutes: Number(estimatedMinutes) || 0
+      estimatedMinutes: Number(estimatedMinutes) || 0,
+      organizationId: orgId
     });
-    if (organizationId) {
-      task.organizationId = organizationId;
-    }
 
     await task.save();
 
@@ -114,15 +114,16 @@ export const addTask = async (req, res) => {
 export const fetchAllTasks = async (req, res) => {
   try {
     const { employeeId } = req.params;
-    const { date, status, startDate, endDate, organizationId } = req.query;
+    const { date, status, startDate, endDate } = req.query;
+
+    const orgId = req.user?.organizationId;
+    if (!orgId) return res.status(403).json({ success: false, message: 'Organization context missing' });
 
     let query = {
       employeeId,
-      isDeleted: false
+      isDeleted: false,
+      organizationId: orgId
     };
-    if (organizationId) {
-      query.organizationId = organizationId;
-    }
 
     if (date) {
       const queryDate = convertToISTForStorage(date);
@@ -188,6 +189,7 @@ export const getTaskById = async (req, res) => {
     const { id } = req.params;
     const { date } = req.query;
 
+    const orgId = req.user?.organizationId;
     let task = await Task.findById(id).populate('employeeId', 'name');
 
     if (!task) {
@@ -195,6 +197,10 @@ export const getTaskById = async (req, res) => {
         success: false,
         message: 'Task not found'
       });
+    }
+
+    if (orgId && task.organizationId?.toString() !== orgId.toString()) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
     if (date) {
@@ -259,8 +265,9 @@ export const updateTask = async (req, res) => {
       updateData.duration = Number(duration) || 0;
     }
 
+    const orgId = req.user?.organizationId;
     const task = await Task.findOneAndUpdate(
-      { _id: req.params.id, isDeleted: false },
+      { _id: req.params.id, isDeleted: false, ...(orgId ? { organizationId: orgId } : {}) },
       updateData,
       { new: true, runValidators: true }
     ).populate('employeeId', 'name');
@@ -291,9 +298,11 @@ export const updateTaskStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
+    const orgId = req.user?.organizationId;
     const task = await Task.findOne({
       _id: id,
-      isDeleted: false
+      isDeleted: false,
+      ...(orgId ? { organizationId: orgId } : {})
     });
 
     if (!task) {
@@ -380,7 +389,11 @@ export const updateTaskStatus = async (req, res) => {
 
 export const deleteTask = async (req, res) => {
   try {
-    const task = await Task.findByIdAndDelete(req.params.id);
+    const orgId = req.user?.organizationId;
+    const task = await Task.findOneAndDelete({
+      _id: req.params.id,
+      ...(orgId ? { organizationId: orgId } : {})
+    });
 
     if (!task) {
       return res.status(404).json({
@@ -407,10 +420,12 @@ export const pauseAllRunningTasks = async (req, res) => {
   try {
     const { employeeId } = req.params;
 
+    const orgId = req.user?.organizationId;
     const runningTasks = await Task.find({
       employeeId,
       status: 'In Progress',
-      isDeleted: false
+      isDeleted: false,
+      ...(orgId ? { organizationId: orgId } : {})
     });
 
     if (!runningTasks.length) {
@@ -456,7 +471,8 @@ export const pauseAllRunningTasks = async (req, res) => {
 // Fetch Tasks by Project Name
 export const fetchTasksByProject = async (req, res) => {
   try {
-    const { projectName, organizationId } = req.query;
+    const { projectName } = req.query;
+    const orgId = req.user?.organizationId;
 
     if (!projectName) {
       return res.status(400).json({
@@ -465,14 +481,13 @@ export const fetchTasksByProject = async (req, res) => {
       });
     }
 
+    if (!orgId) return res.status(403).json({ success: false, message: 'Organization context missing' });
+
     let query = {
       projectName: { $regex: new RegExp(`^${projectName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
       isDeleted: false,
+      organizationId: orgId
     };
-
-    if (organizationId) {
-      query.organizationId = organizationId;
-    }
 
     const tasks = await Task.find(query)
       .populate('employeeId', 'name email image')
@@ -539,13 +554,15 @@ export const getTaskAnalytics = async (req, res) => {
     startOfMonth.setHours(0, 0, 0, 0);
     endOfMonth.setHours(23, 59, 59, 999);
 
+    const orgId = req.user?.organizationId;
     const query = {
       employeeId,
       isDeleted: false,
       assignedDate: {
         $gte: startOfMonth,
         $lte: endOfMonth
-      }
+      },
+      ...(orgId ? { organizationId: orgId } : {})
     };
 
     const tasks = await Task.find(query);

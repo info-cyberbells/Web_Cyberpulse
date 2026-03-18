@@ -1,7 +1,9 @@
 import express from 'express';
 import { addProject, fetchAllProjects, detailProject, updateProject, deleteProject } from '../controller/projectController.js';
+import { authenticateToken } from '../middleware/authMiddleware.js';
 console.log('Inside project route');
 const routerProject = express.Router();
+routerProject.use(authenticateToken);
 
 // Project Routes
 routerProject.post('/add', addProject);         

@@ -6,8 +6,10 @@ import {
   updateEvent,
   deleteEvent,
 } from "../controller/eventController.js";
+import { authenticateToken } from "../middleware/authMiddleware.js";
 
 const routerEvent = express.Router();
+routerEvent.use(authenticateToken);
 
 // Create an Event
 routerEvent.post("/add", addEvent);

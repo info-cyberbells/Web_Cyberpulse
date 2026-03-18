@@ -3,6 +3,7 @@ import http from 'http';
 import "./cronJobs/leaveQuotaCron.js";
 import "./cronJobs/disappearingMessagesCron.js";
 import "./cronJobs/scheduledMessagesCron.js";
+import "./cronJobs/attendanceSelfieCleanupCron.js";
 import dotenv from 'dotenv';
 import cors from 'cors';
 import { connectToDB } from './db.js';

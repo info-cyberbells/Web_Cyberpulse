@@ -1,7 +1,9 @@
 import express from 'express';
 import { addTask, fetchAllTasks, getTaskById, updateTask, deleteTask, updateTaskStatus, getTaskAnalytics, fetchTasksByProject, pauseAllRunningTasks } from '../controller/TaskController.js';
+import { authenticateToken } from '../middleware/authMiddleware.js';
 console.log('Inside Task route');
 const routerTask = express.Router();
+routerTask.use(authenticateToken);
 
 // Task Routes
 routerTask.post('/add', addTask);

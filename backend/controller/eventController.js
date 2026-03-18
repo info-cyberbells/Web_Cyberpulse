@@ -3,8 +3,10 @@ import { createNotificationForAll } from "../helpers/createNotification.js";
 
 // Create an Event
 export const addEvent = async (req, res) => {
-  const { organizationId } = req.body;
   try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) return res.status(403).json({ success: false, error: 'Organization context missing' });
+
     const {
       title,
       description,
@@ -67,11 +69,10 @@ export const addEvent = async (req, res) => {
 // Fetch All Events
 export const fetchAllEvents = async (req, res) => {
   try {
-    const filter = {};
+    const orgId = req.user?.organizationId;
+    if (!orgId) return res.status(403).json({ success: false, error: 'Organization context missing' });
 
-    if (req.query.organizationId) {
-      filter.organizationId = req.query.organizationId;
-    }
+    const filter = { organizationId: orgId };
 
     const events = await Event.find(filter).populate("teamMembers", "name email").populate("createdBy", "name email");
 
@@ -87,10 +88,15 @@ export const getEventById = async (req, res) => {
   try {
     const { id } = req.params;
 
+    const orgId = req.user?.organizationId;
     const event = await Event.findById(id).populate("createdBy", "name email").populate("teamMembers", "name email");
 
     if (!event) {
       return res.status(404).json({ success: false, error: "Event not found" });
+    }
+
+    if (orgId && event.organizationId?.toString() !== orgId.toString()) {
+      return res.status(403).json({ success: false, error: "Access denied" });
     }
 
     res.status(200).json({ success: true, data: event });
@@ -105,8 +111,9 @@ export const updateEvent = async (req, res) => {
     const { id } = req.params;
     const updateFields = req.body;
 
-    const updatedEvent = await Event.findByIdAndUpdate(
-      id,
+    const orgId = req.user?.organizationId;
+    const updatedEvent = await Event.findOneAndUpdate(
+      { _id: id, ...(orgId ? { organizationId: orgId } : {}) },
       { $set: updateFields },
       { new: true, runValidators: true }
     );
@@ -126,7 +133,11 @@ export const deleteEvent = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const deletedEvent = await Event.findByIdAndDelete(id);
+    const orgId = req.user?.organizationId;
+    const deletedEvent = await Event.findOneAndDelete({
+      _id: id,
+      ...(orgId ? { organizationId: orgId } : {})
+    });
 
     if (!deletedEvent) {
       return res.status(404).json({ success: false, error: "Event not found" });

@@ -22,22 +22,12 @@ export const addProject = async (req, res) => {
             deliveryDate,
             urls,
             technology,
-            organizationId,
         } = req.body;
 
+        const organizationId = req.user?.organizationId;
+        if (!organizationId) return res.status(403).json({ error: 'Organization context missing' });
+
         console.log('Request body:', req.body);
-
-
-        if (organizationId) {
-            if (!mongoose.Types.ObjectId.isValid(organizationId)) {
-                return res.status(400).json({ error: 'Invalid organizationId format' });
-            }
-            // Optional: Verify if organizationId exists in Organization collection
-            const orgExists = await Organization.findById(organizationId);
-            if (!orgExists) {
-                return res.status(400).json({ error: 'Organization not found' });
-            }
-        }
 
         const assignedToArray = Array.isArray(assignedTo) ? assignedTo : [];
         const technologyArray = Array.isArray(technology) ? technology : [];
@@ -125,10 +115,15 @@ export const addProject = async (req, res) => {
 export const detailProject = async (req, res) => {
     try {
         const { id } = req.params;
+        const orgId = req.user?.organizationId;
         const project = await Project.findById(id); // Fetch Project by ID
 
         if (!project) {
             throw new Error('Project not found');
+        }
+
+        if (orgId && project.organizationId?.toString() !== orgId.toString()) {
+            return res.status(403).json({ error: 'Access denied' });
         }
 
         // Fetch employees
@@ -189,15 +184,11 @@ export const detailProject = async (req, res) => {
 export const fetchAllProjects = async (req, res) => {
     try {
         console.log("fetchAll");
-        const { organizationId } = req.query;
+        const organizationId = req.user?.organizationId;
 
+        if (!organizationId) return res.status(403).json({ success: false, error: 'Organization context missing' });
 
-        if (organizationId && !mongoose.Types.ObjectId.isValid(organizationId)) {
-            return res.status(400).json({ success: false, error: 'Invalid organizationId format' });
-        }
-
-
-        const query = organizationId ? { organizationId: new mongoose.Types.ObjectId(organizationId) } : {};
+        const query = { organizationId: new mongoose.Types.ObjectId(organizationId) };
 
 
         const projects = await Project.find(query).lean();
@@ -275,6 +266,7 @@ export const updateProject = async (req, res) => {
     try {
         const { id } = req.params; // Fetch project ID from params
         const { name, description, clientName, status, technology, clientAddress, urls, remarks, startDate, deliveryDate, assignedTo, department } = req.body;
+        const orgId = req.user?.organizationId;
 
         if (!id) {
             return res.status(400).json({ error: 'Project ID is required' });
@@ -284,6 +276,10 @@ export const updateProject = async (req, res) => {
         const project = await Project.findById(id);
         if (!project) {
             return res.status(404).json({ error: 'Project not found' });
+        }
+
+        if (orgId && project.organizationId?.toString() !== orgId.toString()) {
+            return res.status(403).json({ error: 'Access denied' });
         }
 
         if (department) project.department = department;
@@ -363,7 +359,11 @@ export const deleteProject = async (req, res) => {
             return res.status(400).json({ error: 'Project ID is required' });
         }
 
-        const deletedProject = await Project.findByIdAndDelete(id);
+        const orgId = req.user?.organizationId;
+        const deletedProject = await Project.findOneAndDelete({
+            _id: id,
+            ...(orgId ? { organizationId: orgId } : {})
+        });
         if (!deletedProject) {
             console.error('Error: Project not found for ID:', id); // Log if not found
             return res.status(404).json({ error: 'Project not found' });
