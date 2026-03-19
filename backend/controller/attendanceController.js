@@ -95,7 +95,7 @@ export const fetchClockDataMonthly = async (req, res) => {
       date: record.date,
       clockInTime: record.clockInTime,
       autoClockOut: record.autoClockOut,
-      clockOutTime: record.clockOutTime
+      clockOutTime: record.clockOutTime,
     }));
 
     res.status(200).json({ attendance: filtered });
@@ -1444,7 +1444,8 @@ export const fetchAllAttendance = async (req, res) => {
     if (!attendanceRecords.length) {
       return res.status(404).json({ message: 'No attendance records found' });
     }
-    res.status(200).json({ attendance: attendanceRecords });
+    const attendance = attendanceRecords.map(record => record.toObject());
+    res.status(200).json({ attendance });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -1463,7 +1464,8 @@ export const getAttendanceById = async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    res.status(200).json({ attendance });
+    const attendanceObj = attendance.toObject();
+    res.status(200).json({ attendance: attendanceObj });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

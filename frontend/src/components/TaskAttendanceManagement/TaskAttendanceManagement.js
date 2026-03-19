@@ -35,8 +35,7 @@ import {
 import { toast } from "react-toastify";
 import TaskCard from "./TaskCard";
 import TaskModel from "./TaskModel";
-import { API_BASE_URL } from "../../constants/apiConstants";
-import { getOrganizationId } from '../../services/globalOrg';
+import apiClient from '../../services/api';
 
 const TaskStatus = {
   PENDING: "Pending",
@@ -265,19 +264,9 @@ const TaskAttendanceManagement = ({
       const fetchProjects = async () => {
         try {
           setLoading(true);
-
-          const organizationId = getOrganizationId();
-          console.log("org if in task", organizationId);
-
-          let url = `${API_BASE_URL}/projects/fetchAll/`;
-          if (organizationId) {
-            url += `?organizationId=${organizationId}`;
-          }
-
-          const response = await fetch(url);
-          const result = await response.json();
-          if (result.success && Array.isArray(result.data)) {
-            setProjects(result.data);
+          const result = await apiClient.get('/projects/fetchAll/');
+          if (result.data?.success && Array.isArray(result.data?.data)) {
+            setProjects(result.data.data);
           } else {
             toast.error("Failed to fetch projects");
           }

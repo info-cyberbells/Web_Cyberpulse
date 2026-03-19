@@ -1,9 +1,10 @@
 import crypto from 'crypto';
 
 const ALGORITHM = 'aes-256-cbc';
-const KEY = process.env.TIME_ENCRYPTION_KEY
-  ? Buffer.from(process.env.TIME_ENCRYPTION_KEY, 'hex')
-  : crypto.randomBytes(32); // fallback for dev, but .env key should be set
+if (!process.env.TIME_ENCRYPTION_KEY) {
+  throw new Error('TIME_ENCRYPTION_KEY must be set in .env');
+}
+const KEY = Buffer.from(process.env.TIME_ENCRYPTION_KEY, 'hex');
 
 const IV_LENGTH = 16;
 const ENCRYPTED_PREFIX = 'enc:';
@@ -51,7 +52,8 @@ export const decryptTime = (encryptedStr) => {
     decrypted += decipher.final('utf8');
     return decrypted;
   } catch (err) {
-    console.error('Time decryption error:', err.message);
-    return encryptedStr; // return as-is on error
+    // Data was encrypted with a different key (e.g. before TIME_ENCRYPTION_KEY was set)
+    // Cannot recover — return null so frontend shows nothing instead of garbage
+    return null;
   }
 };
