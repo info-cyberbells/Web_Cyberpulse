@@ -136,7 +136,7 @@ async function sendChatPushNotification(senderId, participants, populatedMessage
 
     const pushEligible = recipientIds.filter(id => {
       const pref = prefsMap.get(id);
-      if (!pref) return true; // no prefs = defaults on
+      if (!pref) return true;
       if (!pref.pushEnabled) return false;
       if (pref.preferences?.chat_message === false) return false;
       return true;
@@ -144,10 +144,7 @@ async function sendChatPushNotification(senderId, participants, populatedMessage
 
     if (pushEligible.length === 0) return;
 
-    // Get sender name
     const senderName = populatedMessage.senderId?.name || 'Someone';
-
-    // Build notification content
     const isGroup = conversation.type === 'group';
     const title = isGroup
       ? (conversation.name || 'Group Chat')

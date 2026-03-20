@@ -337,7 +337,8 @@ export const addEmployee = async (req, res) => {
 export const fetchAllEmployee = async (req, res) => {
 
   try {
-    const { organizationId, department } = req.query;
+    const { department } = req.query;
+    const organizationId = req.user?.organizationId;
 
     const query = { type: { $ne: 1 } };
     if (organizationId) {

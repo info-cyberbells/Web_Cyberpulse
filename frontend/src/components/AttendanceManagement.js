@@ -547,13 +547,32 @@ const AttendanceManagement = () => {
       console.log(`🔍 Starting clock-in process - Request ID: ${requestId}`);
 
       const clockInTime = getCurrentISOTime();
-      const platform = window.navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Web';
+      const isMobileBrowser = /Mobi|Android|iPhone|iPad/i.test(window.navigator.userAgent);
+      const platform = isMobileBrowser ? 'mobile' : 'web';
+
+      let clockInLocation = undefined;
+      if (isMobileBrowser && navigator.geolocation) {
+        try {
+          clockInLocation = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(
+              (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+              (err) => reject(err),
+              { enableHighAccuracy: true, timeout: 10000 }
+            );
+          });
+        } catch {
+          toast.error("Location access denied. Please enable location to clock in from mobile.");
+          setIsClockingIn(false);
+          return;
+        }
+      }
 
       const clockInData = {
         employeeId,
         clockInTime,
         date: clockInTime.split("T")[0],
         platform,
+        ...(clockInLocation && { clockInLocation }),
       };
 
       console.log(`📤 Sending clock-in request:`, clockInData);

@@ -75,17 +75,17 @@ const normalizeEmployeeData = (response, monthDate) => {
           remarks: doc.remarks || "N/A",
           _id: doc._id || ""
         })),
-        bankDetails: response.employeeInfo.bankDetails || {
-          accountNumber: "N/A",
-          bankName: "N/A",
-          ifscCode: "N/A",
-          nameOnAccount: "N/A"
+        bankDetails: {
+          accountNumber: response.employeeInfo.BankAccountNumber || response.employeeInfo.bankDetails?.accountNumber || "N/A",
+          bankName: response.employeeInfo.BankName || response.employeeInfo.bankDetails?.bankName || "N/A",
+          ifscCode: response.employeeInfo.BankAccountIFSCCode || response.employeeInfo.bankDetails?.ifscCode || "N/A",
+          nameOnAccount: response.employeeInfo.NameOnBankAccount || response.employeeInfo.bankDetails?.nameOnAccount || "N/A",
         },
-        salarydetails: response.employeeInfo.salarydetails || {
-          salary: "N/A",
-          incrementcycle: "N/A",
-          IncrementAmount: "N/A",
-          incrementMonth: "N/A"
+        salarydetails: {
+          salary: response.employeeInfo.salary || response.employeeInfo.salarydetails?.salary || "N/A",
+          incrementcycle: response.employeeInfo.incrementcycle || response.employeeInfo.salarydetails?.incrementcycle || "N/A",
+          IncrementAmount: response.employeeInfo.IncrementAmount || response.employeeInfo.salarydetails?.IncrementAmount || "N/A",
+          incrementMonth: response.employeeInfo.incrementMonth || response.employeeInfo.salarydetails?.incrementMonth || "N/A",
         }
       }
       : getDefaultEmployeeInfo()

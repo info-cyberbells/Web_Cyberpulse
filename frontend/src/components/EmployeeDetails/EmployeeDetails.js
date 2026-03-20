@@ -35,6 +35,7 @@ import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { saveAs } from 'file-saver';
 import { fetchEmployeeDetails, setCurrentMonth, updateEmployeeDetails } from '../../features/employeeDetail/employeeDetailSlice';
+import { fetchAllDepartments } from '../../features/department/departmentSlice';
 import { API_BASE_URL } from "../../constants/apiConstants";
 
 
@@ -42,6 +43,7 @@ const EmployeeDetails = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { data, loading, error, currentMonth } = useSelector(state => state.employeeDetails);
+    const { departmentsList, positionsMap } = useSelector(state => state.departments);
     const { employeeId } = useParams();
     const [tabValue, setTabValue] = useState(0);
     const [openInfoDialog, setOpenInfoDialog] = useState(false);
@@ -84,6 +86,10 @@ const EmployeeDetails = () => {
             dispatch(fetchEmployeeDetails({ monthDate: currentMonth, employeeId }));
         }
     }, [dispatch, employeeId, currentMonth]);
+
+    useEffect(() => {
+        dispatch(fetchAllDepartments());
+    }, [dispatch]);
 
     const storedData = localStorage.getItem("user");
     const userData = JSON.parse(storedData);
@@ -149,18 +155,14 @@ const EmployeeDetails = () => {
             position: editFormData.position,
             type: parseInt(editFormData.type),
             leaveQuota: editFormData.leaveQuota,
-            salarydetails: {
-                salary: editFormData.salary,
-                incrementcycle: editFormData.incrementcycle,
-                IncrementAmount: editFormData.IncrementAmount,
-                incrementMonth: editFormData.incrementMonth
-            },
-            bankDetails: {
-                accountNumber: editFormData.accountNumber,
-                bankName: editFormData.bankName,
-                ifscCode: editFormData.ifscCode,
-                nameOnAccount: editFormData.nameOnAccount
-            }
+            salary: editFormData.salary,
+            incrementcycle: editFormData.incrementcycle,
+            IncrementAmount: editFormData.IncrementAmount,
+            incrementMonth: editFormData.incrementMonth,
+            NameOnBankAccount: editFormData.nameOnAccount,
+            BankAccountNumber: editFormData.accountNumber,
+            BankAccountIFSCCode: editFormData.ifscCode,
+            BankName: editFormData.bankName,
         };
 
         try {
@@ -729,23 +731,45 @@ const EmployeeDetails = () => {
                         </Grid>
                         <Grid item xs={12} sm={6}>
                             <TextField
+                                select
                                 name="department"
                                 label="Department"
                                 value={editFormData.department}
-                                onChange={handleEditInputChange}
+                                onChange={(e) => setEditFormData(prev => ({ ...prev, department: e.target.value, position: '' }))}
                                 fullWidth
                                 variant="outlined"
-                            />
+                                disabled={departmentsList.length === 0}
+                            >
+                                {departmentsList.length > 0 ? (
+                                    departmentsList.map((dept) => (
+                                        <MenuItem key={dept} value={dept}>{dept}</MenuItem>
+                                    ))
+                                ) : (
+                                    <MenuItem disabled>No departments available</MenuItem>
+                                )}
+                            </TextField>
                         </Grid>
                         <Grid item xs={12} sm={6}>
                             <TextField
+                                select
                                 name="position"
                                 label="Position"
                                 value={editFormData.position}
                                 onChange={handleEditInputChange}
                                 fullWidth
                                 variant="outlined"
-                            />
+                                disabled={!editFormData.department || !positionsMap[editFormData.department]?.length}
+                            >
+                                {positionsMap[editFormData.department]?.length > 0 ? (
+                                    positionsMap[editFormData.department].map((pos) => (
+                                        <MenuItem key={pos} value={pos}>{pos}</MenuItem>
+                                    ))
+                                ) : (
+                                    <MenuItem disabled>
+                                        {editFormData.department ? 'No positions available' : 'Select a department first'}
+                                    </MenuItem>
+                                )}
+                            </TextField>
                         </Grid>
                         <Grid item xs={12} sm={6}>
                             <TextField

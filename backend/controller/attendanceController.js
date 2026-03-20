@@ -65,6 +65,7 @@ export const fetchClockDataMonthly = async (req, res) => {
   try {
 
     const { month } = req.body; // month passed in body
+    const orgId = req.user?.organizationId;
 
     if (!month) {
       return res.status(400).json({ error: "Month is required" });
@@ -82,6 +83,7 @@ export const fetchClockDataMonthly = async (req, res) => {
     const start = new Date(year, mon - 1, 1);
     const end = new Date(year, mon, 1); // first day of next month
     filter.date = { $gte: start, $lt: end };
+    if (orgId) filter.organizationId = orgId;
 
     const attendanceRecords = await Attendance.find(filter)
       .populate("employeeId", "name email organizationId")
@@ -579,7 +581,8 @@ export const getAttendanceAndTasksByEmployeeAndDate = async (req, res) => {
 
 export const getAllEmployeesAttendanceAndTasksByDate = async (req, res) => {
   try {
-    const { date, organizationId, department } = req.query;
+    const { date, department } = req.query;
+    const organizationId = req.user?.organizationId;
     if (!date) {
       return res.status(400).json({ message: "Date is required" });
     }
@@ -2261,7 +2264,8 @@ export const getMonthlyAttendance = async (req, res) => {
 
     let year = parseInt(req.query.year);
     let month = parseInt(req.query.month);
-    const { period, organizationId, department } = req.query;
+    const { period, department } = req.query;
+    const organizationId = req.user?.organizationId;
 
     if (isNaN(year)) year = today.getFullYear();
     if (isNaN(month) || month < 0 || month > 11) month = today.getMonth();

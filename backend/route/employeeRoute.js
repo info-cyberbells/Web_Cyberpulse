@@ -3,13 +3,14 @@ import mongoose from 'mongoose';
 import { updateProfile, changePassword, uploadProfileImage, addEmployee, fetchAllEmployee, requestResetPassword, detailEmployee, updateEmployee, forgotPassword, verifyResetCodeAndChangePassword, deleteEmployee, login, sendSalarySlip, deleteEmployeeAccount } from '../controller/employeeProfileController.js';
 import { updateProfileWeb, changePasswordWeb, uploadProfileImageWeb } from '../controller/userProfileWebController.js';
 import { uploadDocument, getEmployeeDocuments, uploadSalarySlip } from '../controller/documentsController.js';
+import { authenticateToken } from '../middleware/authMiddleware.js';
 
 const routerEmployees = express.Router();
 
 // Employee Routes
 routerEmployees.post('/login', login);
 routerEmployees.post('/add', addEmployee);
-routerEmployees.get('/fetchAll', fetchAllEmployee);
+routerEmployees.get('/fetchAll', authenticateToken, fetchAllEmployee);
 routerEmployees.get('/detail/:id', detailEmployee);
 routerEmployees.delete('/delete/:id', deleteEmployee);
 

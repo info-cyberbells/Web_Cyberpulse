@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getOrganizationId } from '../services/globalOrg';
 import {
   Modal,
   Box,
@@ -98,7 +99,7 @@ const DepartmentManagementModal = ({ isOpen, onClose }) => {
 
 
 
-    dispatch(addNewDepartment(newDepartment));
+    dispatch(addNewDepartment({ ...newDepartment, organizationId: getOrganizationId() }));
   };
 
   // Edit department

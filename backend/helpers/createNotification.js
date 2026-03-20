@@ -39,28 +39,40 @@ const isUserNotifEnabled = (userPref, notifType) => {
 };
 
 /**
- * Send FCM push to recipients who have push enabled + this type enabled.
+ * Build a prefs map and return two lists:
+ *  - notifEligible: recipients who want this notification type (in-app + push)
+ *  - pushEligible:  subset who also have pushEnabled
  */
-const sendFcmToRecipients = async (recipientIds, type, title, message) => {
+const getEligibleRecipients = async (recipientIds, type) => {
+  const userPrefs = await UserNotificationPreference.find({
+    userId: { $in: recipientIds },
+  });
+
+  const prefsMap = new Map();
+  userPrefs.forEach((p) => prefsMap.set(p.userId.toString(), p));
+
+  const notifEligible = [];
+  const pushEligible = [];
+
+  recipientIds.forEach((id) => {
+    const pref = prefsMap.get(id.toString());
+    const wantsType = !pref || isUserNotifEnabled(pref, type);
+    if (!wantsType) return; // user disabled this type entirely
+    notifEligible.push(id);
+    if (!pref || (pref.pushEnabled && wantsType)) {
+      pushEligible.push(id);
+    }
+  });
+
+  return { notifEligible, pushEligible };
+};
+
+/**
+ * Send FCM push to eligible recipients.
+ */
+const sendFcmToRecipients = async (pushEligible, type, title, message) => {
   try {
-    if (!recipientIds || recipientIds.length === 0) return;
-
-    const userPrefs = await UserNotificationPreference.find({
-      userId: { $in: recipientIds },
-    });
-
-    const prefsMap = new Map();
-    userPrefs.forEach((p) => prefsMap.set(p.userId.toString(), p));
-
-    const pushEligible = recipientIds.filter((id) => {
-      const pref = prefsMap.get(id.toString());
-      if (!pref) return true; // no prefs = all defaults on
-      if (!pref.pushEnabled) return false;
-      return isUserNotifEnabled(pref, type);
-    });
-
-    if (pushEligible.length === 0) return;
-
+    if (!pushEligible || pushEligible.length === 0) return;
     if (pushEligible.length === 1) {
       await sendPushToUser(pushEligible[0], title, message, { type });
     } else {
@@ -91,9 +103,11 @@ export const createNotification = async (type, data) => {
 
     if (recipients.length === 0) return;
 
-    const recipientIds = recipients.map((r) => r._id);
+    const allIds = recipients.map((r) => r._id);
+    const { notifEligible, pushEligible } = await getEligibleRecipients(allIds, type);
+    if (notifEligible.length === 0) return;
 
-    const notificationDocs = recipientIds.map((id) => ({
+    const notificationDocs = notifEligible.map((id) => ({
       type, title, message, triggeredBy,
       recipient: id, organizationId,
       resourceId: resourceId || null,
@@ -103,8 +117,7 @@ export const createNotification = async (type, data) => {
     const created = await Notification.insertMany(notificationDocs);
     emitNotifications(created);
 
-    // Send FCM push notifications
-    await sendFcmToRecipients(recipientIds, type, title, message);
+    await sendFcmToRecipients(pushEligible, type, title, message);
   } catch (error) {
     console.error("Error creating notification:", error);
   }
@@ -120,6 +133,9 @@ export const createNotificationForEmployee = async (type, data) => {
     const settings = await NotificationSettings.findOne({ organizationId });
     if (settings && settings[type] === false) return;
 
+    const { notifEligible, pushEligible } = await getEligibleRecipients([recipientId], type);
+    if (notifEligible.length === 0) return;
+
     const doc = {
       type, title, message, triggeredBy,
       recipient: recipientId, organizationId,
@@ -130,8 +146,7 @@ export const createNotificationForEmployee = async (type, data) => {
     const created = await Notification.insertMany([doc]);
     emitNotifications(created);
 
-    // Send FCM push notification
-    await sendFcmToRecipients([recipientId], type, title, message);
+    await sendFcmToRecipients(pushEligible, type, title, message);
   } catch (error) {
     console.error("Error creating employee notification:", error);
   }
@@ -156,9 +171,11 @@ export const createNotificationForAll = async (type, data) => {
 
     if (recipients.length === 0) return;
 
-    const recipientIds = recipients.map((r) => r._id);
+    const allIds = recipients.map((r) => r._id);
+    const { notifEligible, pushEligible } = await getEligibleRecipients(allIds, type);
+    if (notifEligible.length === 0) return;
 
-    const notificationDocs = recipientIds.map((id) => ({
+    const notificationDocs = notifEligible.map((id) => ({
       type, title, message, triggeredBy,
       recipient: id, organizationId,
       resourceId: resourceId || null,
@@ -168,8 +185,7 @@ export const createNotificationForAll = async (type, data) => {
     const created = await Notification.insertMany(notificationDocs);
     emitNotifications(created);
 
-    // Send FCM push notifications
-    await sendFcmToRecipients(recipientIds, type, title, message);
+    await sendFcmToRecipients(pushEligible, type, title, message);
   } catch (error) {
     console.error("Error creating broadcast notification:", error);
   }
