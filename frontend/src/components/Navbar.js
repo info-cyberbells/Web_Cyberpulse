@@ -33,7 +33,6 @@ const Navbar = () => {
   };
 
   const menuItems = [
-    { label: 'Features', action: () => navigate('/') },
     { label: 'AI Solutions', action: () => window.open('https://web.cyberbells.com/demos/AI_Projects/all_portfolio.html', '_blank') },
     { label: 'Organisation', action: () => navigate('/signup') },
     { label: 'Contact', action: () => navigate('/support') },

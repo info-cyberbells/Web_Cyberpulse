@@ -49,7 +49,8 @@ const Footer = () => {
                     </Typography>
 
                     {/* App Buttons */}
-                    <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mb: 3 }}>
+                    <Box onClick={() => window.open('https://apps.apple.com/in/app/cyberpulse-360/id6759317832', '_blank')}
+                        sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mb: 3 }}>
                         <Box sx={{
                             display: 'flex', alignItems: 'center', gap: 1,
                             backgroundColor: '#2a2a2a', border: '1px solid #3a3a3a',
@@ -83,7 +84,7 @@ const Footer = () => {
                     <Box sx={{ display: 'flex', gap: 1.5 }}>
                         {[
                             { Icon: Instagram, url: 'https://www.instagram.com/cyberbells_official?igsh=dG1vcTdqbGxrOTFr' },
-                            { Icon: Facebook, url: null },
+                            { Icon: Facebook, url: 'https://www.facebook.com/CyberbellsITES/' },
                             { Icon: LinkedIn, url: 'https://www.linkedin.com/company/cyberbells-ites-services-ltd' },
                         ].map(({ Icon, url }, i) => (
                             <Box key={i} onClick={url ? () => window.open(url, '_blank') : undefined} sx={{
@@ -132,9 +133,9 @@ const Footer = () => {
                         Contact Us
                     </Typography>
                     {[
-                        { Icon: EmailOutlinedIcon, text: 'info@cyberbells.com', href: 'mailto:info@cyberbells.com' },
-                        { Icon: PhoneOutlinedIcon, text: '+91 98765 43210' },
-                        { Icon: LocationOnOutlinedIcon, text: 'Industrial Area Phase II, Chandigarh' },
+                        { Icon: EmailOutlinedIcon, text: 'info.cyberbells@gmail.com', href: 'mailto:info.cyberbells@gmail.com' },
+                        { Icon: PhoneOutlinedIcon, text: '+91 99158 65939', href: 'tel:+919915865939' },
+                        { Icon: LocationOnOutlinedIcon, text: 'Industrial Area Phase II, Chandigarh, 160002' },
                     ].map(({ Icon, text, href }, i) => (
                         <Box key={i} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.2, mb: 1.8 }}>
                             <Icon sx={{ fontSize: 17, color: '#2563eb', mt: '2px' }} />

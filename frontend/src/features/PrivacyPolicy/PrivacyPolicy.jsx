@@ -279,15 +279,34 @@ export default function PrivacyPolicy() {
             Privacy Policy or your personal data, please contact us:
           </Typography>
           <Box sx={{ mt: 2, pl: 2 }}>
+
+            {/* Email */}
             <Typography sx={{ ...paragraphStyle, mb: 0.5 }}>
-              <strong>Email:</strong> support@cyberpulse360.com
+              <strong>Email:</strong>{" "}
+              <a
+                href="mailto:info.cyberbells@gmail.com"
+                style={{ color: "#1976d2", textDecoration: "none", wordBreak: "break-all" }}
+              >
+                info.cyberbells@gmail.com
+              </a>
             </Typography>
+
+            {/* Phone */}
             <Typography sx={{ ...paragraphStyle, mb: 0.5 }}>
-              <strong>Website:</strong> https://cyberpulse360.com
+              <strong>Phone:</strong>{" "}
+              <a
+                href="tel:+919915865939"
+                style={{ color: "#1976d2", textDecoration: "none" }}
+              >
+                +91 99158 65939
+              </a>
             </Typography>
+
+            {/* Address */}
             <Typography sx={{ ...paragraphStyle, mb: 0.5 }}>
-              <strong>Address:</strong>  Cyberbells ITES services pvt ltd.
+              <strong>Address:</strong> Industrial Area Phase II, Chandigarh, 160002
             </Typography>
+
           </Box>
         </>
       ),
