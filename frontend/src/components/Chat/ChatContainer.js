@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Box, useMediaQuery, useTheme, IconButton } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import socketService from '../../services/socketService';
+import { playMessageSound } from '../../utils/soundUtils';
 import ConversationList from './ConversationList';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
@@ -78,6 +79,10 @@ const ChatContainer = () => {
 
         const senderId = typeof data.data.senderId === 'object' ? data.data.senderId._id : data.data.senderId;
         const currentUserId = JSON.parse(localStorage.getItem('user'))?.employee?.id;
+
+        if (senderId !== currentUserId) {
+          playMessageSound();
+        }
 
         // If this message is for the currently active conversation and NOT from me, mark as seen immediately
         if (data.data.conversationId === activeConvRef.current && senderId !== currentUserId) {

@@ -17,6 +17,14 @@ apiClient.interceptors.request.use(
       if (userData?.token) {
         config.headers.Authorization = `Bearer ${userData.token}`;
       }
+      // SuperAdmin: attach selected org as x-org-id header
+      const isSuperAdmin = userData?.employee?.type === 1 && !userData?.employee?.organizationId;
+      if (isSuperAdmin) {
+        const selectedOrgId = localStorage.getItem('superAdminSelectedOrgId');
+        if (selectedOrgId) {
+          config.headers['x-org-id'] = selectedOrgId;
+        }
+      }
     }
     return config;
   },

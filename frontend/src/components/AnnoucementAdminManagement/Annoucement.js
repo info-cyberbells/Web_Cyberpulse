@@ -161,7 +161,7 @@ const AnnouncementManagement = () => {
           editExistingAnnoucement({ id: selectedAnnouncement._id, AnnoucementData: formData })
         ).unwrap();
       } else {
-        await dispatch(addNewAnnoucement(formData)).unwrap();
+        await dispatch(addNewAnnoucement({ ...formData, createdBy: userData?.employee?.id || userData?.employee?._id })).unwrap();
       }
       handleCloseDialog();
     } catch (err) {

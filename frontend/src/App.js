@@ -60,6 +60,7 @@ import PrivacyPolicy from "./features/PrivacyPolicy/PrivacyPolicy";
 import DeleteAccount from "./components/DeleteAccount/DeleteAccount";
 import ChatContainer from "./components/Chat/ChatContainer";
 import Support from "./components/Support/Support";
+import SuperAdminShell from "./components/SuperAdmin/SuperAdminShell";
 import WfhCreditsPage from "./components/WfhCredit/WfhCreditsPage";
 import MyWfhCredits from "./components/WfhCredit/MyWfhCredits";
 import NotificationPage from "./components/Notifications/NotificationPage";
@@ -191,6 +192,22 @@ function AppContent() {
           <Navbar isLoggedIn={false} onLogout={handleLogout} />
           <UnauthorizedRoutes />
         </>
+      );
+    }
+
+    // SuperAdmin: type 1 with no organizationId
+    if (userType === 1 && !employeeData?.organizationId) {
+      return (
+        <Sidebar
+          isLoggedIn={true}
+          onLogout={handleLogout}
+          userType={userType}
+          userName={employeeData?.name}
+          userRole="Super Admin"
+          onStartSlideshow={() => setIsSlideshowActive(true)}
+        >
+          <SuperAdminShell lastPath={lastPath} />
+        </Sidebar>
       );
     }
 

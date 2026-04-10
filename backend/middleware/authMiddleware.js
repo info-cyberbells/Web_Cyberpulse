@@ -13,11 +13,16 @@ export const authenticateToken = (req, res, next) => {
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+    // For SuperAdmin (type 1 with no organizationId), allow orgId via x-org-id header
+    const orgId =
+      decoded.organizationId ||
+      (decoded.type === 1 && !decoded.organizationId ? req.headers['x-org-id'] : null);
+
     req.user = {
       id: decoded.id,
       email: decoded.email,
       type: decoded.type,
-      organizationId: decoded.organizationId,
+      organizationId: orgId,
     };
 
     next();
