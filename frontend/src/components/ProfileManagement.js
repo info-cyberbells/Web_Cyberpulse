@@ -170,7 +170,7 @@ const ProfileManagement = () => {
     const newErrors = {};
 
     // Name validation
-    if (!formData.name.trim()) {
+    if (!formData.name || !formData.name.trim()) {
       newErrors.name = "Name is required";
     } else if (formData.name.length < 2) {
       newErrors.name = "Name must be at least 2 characters long";
@@ -194,7 +194,7 @@ const ProfileManagement = () => {
     }
 
     // Address validation
-    if (!formData.address.trim()) {
+    if (!formData.address || !formData.address.trim()) {
       newErrors.address = "Address is required";
     }
 
@@ -204,9 +204,9 @@ const ProfileManagement = () => {
     }
 
     // Department validation
-    if (!formData.department.trim()) {
-      newErrors.department = "Department is required";
-    }
+    // if (!formData.department || !formData.department.trim()) {
+    //   newErrors.department = "Department is required";
+    // }
     // Bank Name validation (optional)
     if (formData.BankName && !/^[a-zA-Z\s]*$/.test(formData.BankName)) {
       newErrors.BankName = "Bank name should only contain letters and spaces";
@@ -300,7 +300,7 @@ const ProfileManagement = () => {
       });
     } catch (error) {
       console.error("Error converting image to base64:", error);
-      return null;
+      return imageUrl;
     }
   };
 

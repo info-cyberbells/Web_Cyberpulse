@@ -34,6 +34,7 @@ import routerOrgSettings from './route/organizationSettingsRoute.js';
 import routerUserNotifPref from './route/userNotificationPreferenceRoute.js';
 import routerFcmToken from './route/fcmTokenRoute.js';
 import routerSuperAdmin from './route/superAdminRoute.js';
+import routerAdminProfile from './route/adminProfileRoute.js';
 import { initializeSocketServer } from './socket/socketServer.js';
 import { apiRateLimiter } from './middleware/rateLimitMiddleware.js';
 
@@ -78,6 +79,7 @@ app.use("/api/org-settings", routerOrgSettings);
 app.use("/api/notification-preferences", routerUserNotifPref);
 app.use("/api/fcm-token", routerFcmToken);
 app.use("/api/superadmin", routerSuperAdmin);
+app.use("/api/admin-profile", routerAdminProfile);
 
 const PORT = process.env.PORT || 4040;
 const httpServer = http.createServer(app);

@@ -519,7 +519,7 @@ const MonthlyAttendance = () => {
     <Box sx={{ bgcolor: "background.default", minHeight: "100vh", py: 4 }}>
       <Container maxWidth="lg">
         {/* Header with Month Navigation */}
-        {!loading && !localLoading && !error && attendanceData.length > 0 && (
+        {!loading && !localLoading && !error && (
           <>
             <HeaderCard>
               <CardContent sx={{ py: 3 }}>
@@ -759,6 +759,27 @@ const MonthlyAttendance = () => {
               </TableContainer>
             </Card>
           </>
+        )}
+
+        {attendanceData.length === 0 && (
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              py: 10,
+              gap: 2,
+            }}
+          >
+            <CalendarIcon sx={{ fontSize: 64, color: "#d1d5db" }} />
+            <Typography variant="h6" color="text.secondary" fontWeight={600}>
+              No Attendance Data Found
+            </Typography>
+            <Typography variant="body2" color="#9ca3af">
+              There are no records for {formattedMonth}. Try selecting a different month.
+            </Typography>
+          </Box>
         )}
 
 

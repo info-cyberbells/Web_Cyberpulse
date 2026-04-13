@@ -1408,6 +1408,34 @@ export const updateOrgSettings = async (orgId, data) => {
   }
 };
 
+// Admin Profile Services
+export const getAdminProfile = async () => {
+  try {
+    const response = await apiClient.get(API_ROUTES.GET_ADMIN_PROFILE);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const updateAdminProfile = async (profileData) => {
+  try {
+    const response = await apiClient.put(API_ROUTES.UPDATE_ADMIN_PROFILE, profileData);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const updateOrgDetails = async (orgData) => {
+  try {
+    const response = await apiClient.put(API_ROUTES.UPDATE_ORG_DETAILS, orgData);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const deleteMyAccount = async (employeeId) => {
   try {
     const response = await apiClient.post(

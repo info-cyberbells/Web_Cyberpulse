@@ -134,4 +134,8 @@ export const API_ROUTES = {
   REGISTER_FCM_TOKEN: "/fcm-token",
   REMOVE_FCM_TOKEN: "/fcm-token",
   REMOVE_ALL_FCM_TOKENS: "/fcm-token/all",
+
+  GET_ADMIN_PROFILE: "/admin-profile/get-profile",
+  UPDATE_ADMIN_PROFILE: "/admin-profile/me",
+  UPDATE_ORG_DETAILS: "/admin-profile/organization",
 };

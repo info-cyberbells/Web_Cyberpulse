@@ -1,4 +1,5 @@
 import OrganizationSettings from "../model/organizationSettingsModel.js";
+import Organization from "../model/organizationModel.js";
 import Employee from "../model/employeeModel.js";
 import mongoose from "mongoose";
 
@@ -18,11 +19,23 @@ export const getOrgSettings = async (req, res) => {
       return res.status(400).json({ success: false, error: "Invalid organization ID" });
     }
 
-    const settings = await OrganizationSettings.findOne({ organizationId: orgId });
+    const [settings, organization] = await Promise.all([
+      OrganizationSettings.findOne({ organizationId: orgId }),
+      Organization.findById(orgId),
+    ]);
+
+    const fullUrl = `${req.protocol}://${req.get("host")}`;
+    const logoUrl = organization?.logo && organization.logo.startsWith("/uploads/") 
+      ? `${fullUrl}${organization.logo}` 
+      : organization?.logo || null;
 
     res.status(200).json({
       success: true,
-      data: settings || { organizationId: orgId, ...DEFAULT_SETTINGS },
+      data: {
+        ...(settings?.toObject() || { organizationId: orgId, ...DEFAULT_SETTINGS }),
+        orgName: organization?.orgName || "Organization",
+        logo: logoUrl,
+      },
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

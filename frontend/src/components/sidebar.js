@@ -40,6 +40,7 @@ import {
   Person as PersonIcon,
   Payments as PaymentsIcon,
   RequestPage as RequestPageIcon,
+  AdminPanelSettings as AdminPanelSettingsIcon,
 } from "@mui/icons-material";
 import CalculateIcon from '@mui/icons-material/Calculate';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
@@ -145,6 +146,12 @@ const Sidebar = ({ isLoggedIn, onLogout, children, onStartSlideshow, userName, u
       path: "/profile",
       icon: <AccountCircleIcon />,
       allowedTypes: [2, 3, 4, 5],
+    },
+    {
+      title: "Admin Profile",
+      path: "/admin-profile",
+      icon: <AdminPanelSettingsIcon />,
+      allowedTypes: [1],
     },
     {
       title: "Documents",

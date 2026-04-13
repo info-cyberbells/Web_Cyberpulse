@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -29,6 +29,7 @@ import {
   FreeBreakfast as OnBreakIcon,
   AccountCircle as AccountCircleIcon,
   BreakfastDining as BreakfastDiningIcon,
+  Business as BusinessIcon,
 } from "@mui/icons-material";
 import NotificationBell from "./Notifications/NotificationBell";
 import { drawerWidth } from "./sidebar";
@@ -69,6 +70,7 @@ const TopNavbar = ({ onLogout, userName, userRole, sidebarOpen, isMobile }) => {
 
   const { currentAttendance } = useSelector((state) => state.attendances);
   const { unreadCounts } = useSelector((state) => state.chat);
+  const { user } = useSelector((state) => state.auth);
 
   const [elapsedTime, setElapsedTime] = useState(null);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
@@ -90,28 +92,44 @@ const TopNavbar = ({ onLogout, userName, userRole, sidebarOpen, isMobile }) => {
     0
   );
 
+  const getRoleLabel = () => {
+    const type = user?.employee?.type;
+    switch (type) {
+      case 1: return "Admin";
+      case 2: return user?.employee?.jobRole || "Employee";
+      case 3: return "Team Lead";
+      case 4: return "HR";
+      case 5: return "Manager";
+      default: return userRole || "User";
+    }
+  };
+
   const isClockedIn =
     currentAttendance?.clockInTime && !currentAttendance?.clockOutTime;
   const isOnBreak = currentAttendance?.Employeestatus === "on break";
 
   // Fetch org settings on mount
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const userData = JSON.parse(localStorage.getItem("user"));
-        const orgId = userData?.employee?.organizationId;
-        if (orgId) {
-          const response = await getOrgSettings(orgId);
-          if (response?.success && response?.data) {
-            setOrgSettings(response.data);
-          }
+  const fetchSettings = useCallback(async () => {
+    try {
+      const orgId = user?.employee?.organizationId;
+      if (orgId) {
+        const response = await getOrgSettings(orgId);
+        if (response?.success && response?.data) {
+          setOrgSettings(response.data);
         }
-      } catch (error) {
-        console.error("Failed to fetch org settings:", error);
       }
-    };
+    } catch (error) {
+      console.error("Failed to fetch org settings:", error);
+    }
+  }, [user?.employee?.organizationId]);
+
+  useEffect(() => {
     fetchSettings();
-  }, []);
+
+    // Listen for updates from other components (like AdminProfile)
+    window.addEventListener("orgUpdated", fetchSettings);
+    return () => window.removeEventListener("orgUpdated", fetchSettings);
+  }, [fetchSettings]);
 
   // Timer
   useEffect(() => {
@@ -419,138 +437,71 @@ const TopNavbar = ({ onLogout, userName, userRole, sidebarOpen, isMobile }) => {
                 noWrap
                 sx={{ color: "rgba(255,255,255,0.5)", fontSize: "0.65rem", lineHeight: 1 }}
               >
-                {userRole || "Employee"}
+                {getRoleLabel()}
               </Typography>
             </Box>
           </Box>
 
           <Box sx={{ flexGrow: 1 }} />
 
-          {/* Center: Timer + Actions */}
-          <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 0.5, md: 1 } }}>
-            {/* Work Timer */}
+          {/* Center: Organization Branding */}
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1.8,
+              px: { xs: 1.2, md: 2.8 },
+              py: 0.8,
+            }}
+          >
             <Box
               sx={{
+                width: 38,
+                height: 38,
+                borderRadius: "50%",
+                overflow: "hidden",
+                border: "2px solid rgba(255,255,255,0.2)",
                 display: "flex",
                 alignItems: "center",
-                gap: 0.75,
-                px: { xs: 1, md: 1.5 },
-                py: 0.5,
-                borderRadius: 2,
-                bgcolor: isClockedIn
-                  ? isOnBreak
-                    ? "rgba(251,191,36,0.15)"
-                    : "rgba(34,197,94,0.15)"
-                  : "rgba(255,255,255,0.08)",
-                border: "1px solid",
-                borderColor: isClockedIn
-                  ? isOnBreak
-                    ? "rgba(251,191,36,0.3)"
-                    : "rgba(34,197,94,0.3)"
-                  : "rgba(255,255,255,0.1)",
+                justifyContent: "center",
+                background: orgSettings?.logo ? "#fff" : "rgba(255,255,255,0.05)",
+                transition: "all 0.3s ease",
               }}
             >
-              <TimerIcon
-                sx={{
-                  fontSize: 16,
-                  color: isClockedIn
-                    ? isOnBreak ? "#fbbf24" : "#22c55e"
-                    : "rgba(255,255,255,0.4)",
-                }}
-              />
-              <Typography
-                sx={{
-                  fontFamily: "'Roboto Mono', monospace",
-                  fontWeight: 700,
-                  fontSize: { xs: "0.75rem", md: "0.85rem" },
-                  color: isClockedIn
-                    ? isOnBreak ? "#fbbf24" : "#4ade80"
-                    : "rgba(255,255,255,0.4)",
-                  letterSpacing: "0.5px",
-                }}
-              >
-                {elapsedTime || "00:00:00"}
-              </Typography>
-              {isOnBreak && (
-                <Typography
+              {orgSettings?.logo ? (
+                <Box
+                  component="img"
+                  src={orgSettings.logo}
+                  alt="Org Logo"
                   sx={{
-                    fontSize: "0.6rem",
-                    fontWeight: 700,
-                    color: "#fbbf24",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.5px",
-                    display: { xs: "none", sm: "block" },
+                    width: 28,
+                    height: 28,
+                    borderRadius: "4px",
+                    objectFit: "contain",
                   }}
-                >
-                  Break
-                </Typography>
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.parentElement.style.background = 'rgba(255,255,255,0.1)';
+                  }}
+                />
+              ) : (
+                <BusinessIcon sx={{ fontSize: 22, color: "rgba(255,255,255,0.6)" }} />
               )}
             </Box>
 
-            {/* Break / End Break Button */}
-            {isClockedIn && (
-              <Tooltip title={isOnBreak ? "End Break" : "Take Break"}>
-                <Button
-                  size="small"
-                  onClick={isOnBreak ? handleEndBreak : () => setBreakDialogOpen(true)}
-                  sx={{
-                    minWidth: 0,
-                    px: { xs: 0.75, md: 1.5 },
-                    py: 0.5,
-                    borderRadius: 1.5,
-                    fontSize: "0.7rem",
-                    fontWeight: 600,
-                    textTransform: "none",
-                    color: isOnBreak ? "#fbbf24" : "rgba(255,255,255,0.7)",
-                    bgcolor: isOnBreak ? "rgba(251,191,36,0.15)" : "rgba(255,255,255,0.06)",
-                    border: "1px solid",
-                    borderColor: isOnBreak ? "rgba(251,191,36,0.3)" : "rgba(255,255,255,0.1)",
-                    "&:hover": {
-                      bgcolor: isOnBreak ? "rgba(251,191,36,0.25)" : "rgba(255,255,255,0.12)",
-                    },
-                  }}
-                  startIcon={
-                    isOnBreak
-                      ? <OnBreakIcon sx={{ fontSize: "14px !important" }} />
-                      : <BreakIcon sx={{ fontSize: "14px !important" }} />
-                  }
-                >
-                  <Box sx={{ display: { xs: "none", md: "block" } }}>
-                    {isOnBreak ? "End Break" : "Break"}
-                  </Box>
-                </Button>
-              </Tooltip>
-            )}
-
-            {/* Clock Out Button */}
-            {isClockedIn && (
-              <Tooltip title="Clock Out">
-                <Button
-                  size="small"
-                  onClick={() => setClockOutDialogOpen(true)}
-                  sx={{
-                    minWidth: 0,
-                    px: { xs: 0.75, md: 1.5 },
-                    py: 0.5,
-                    borderRadius: 1.5,
-                    fontSize: "0.7rem",
-                    fontWeight: 600,
-                    textTransform: "none",
-                    color: "#f87171",
-                    bgcolor: "rgba(239,68,68,0.1)",
-                    border: "1px solid rgba(239,68,68,0.2)",
-                    "&:hover": {
-                      bgcolor: "rgba(239,68,68,0.2)",
-                    },
-                  }}
-                  startIcon={<ClockOutIcon sx={{ fontSize: "14px !important" }} />}
-                >
-                  <Box sx={{ display: { xs: "none", md: "block" } }}>
-                    Clock Out
-                  </Box>
-                </Button>
-              </Tooltip>
-            )}
+            <Box sx={{ display: { xs: "none", sm: "block" } }}>
+              <Typography
+                sx={{
+                  fontSize: "0.95rem",
+                  fontWeight: 700,
+                  letterSpacing: "0.5px",
+                  color: "#ffffff",
+                  lineHeight: 1,
+                }}
+              >
+                {orgSettings?.orgName || " "}
+              </Typography>
+            </Box>
           </Box>
 
           <Box sx={{ flexGrow: 1 }} />
@@ -588,7 +539,10 @@ const TopNavbar = ({ onLogout, userName, userRole, sidebarOpen, isMobile }) => {
 
             <Tooltip title="Profile">
               <IconButton
-                onClick={() => navigate("/profile")}
+                onClick={() => {
+                  const isAdmin = user?.employee?.type === 1;
+                  navigate(isAdmin ? "/admin-profile" : "/profile");
+                }}
                 size="small"
                 sx={{
                   color: "rgba(255,255,255,0.7)",

@@ -28,6 +28,7 @@ import ArchivedProjectList from "./components/ArchivedProjectList";
 import AttendanceManagement from "./components/AttendanceManagement";
 import LeaveManagement from "./components/LeaveManagement";
 import ProfileManagement from "./components/ProfileManagement";
+import AdminProfile from "./components/AdminProfile";
 import Dashboard from "./components/Dashboard";
 import TaskManagement from "./components/TaskManagement";
 import EventManagement from "./components/EventAdminManagement/EventManagement";
@@ -135,7 +136,7 @@ function AppContent() {
   }
 
   const handleLogout = async () => {
-    await cleanupFCM().catch(() => {});
+    await cleanupFCM().catch(() => { });
     localStorage.clear();
     dispatch(logoutUser());
     navigate('/login', { replace: true });
@@ -160,6 +161,7 @@ function AppContent() {
       <Route path="/get-all-requests" element={<AdminAdvanceSalary />} />
       <Route path="/salary-calculator" element={<SalaryCalculator />} />
       <Route path="/add-employee/:employeeId" element={<EmployeeDetails />} />
+      <Route path="/admin-profile" element={<AdminProfile />} />
       <Route path="/add-file" element={<AdminSide />} />
       <Route path="/invoice-management" element={<InvoiceManagement />} />
       <Route path="/invoice-generator" element={<InvoiceGenerator />} />

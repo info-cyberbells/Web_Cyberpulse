@@ -9,6 +9,7 @@ const organizationSchema = new mongoose.Schema(
         orgSize: { type: String },
         phone: { type: String },
         email: { type: String },
+        logo: { type: String },
     },
     { timestamps: true }
 );
