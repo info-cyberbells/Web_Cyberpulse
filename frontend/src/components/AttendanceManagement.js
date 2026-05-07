@@ -55,6 +55,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import PlayIcon from "@mui/icons-material/PlayArrow";
+import LocationOnIcon from "@mui/icons-material/LocationOn";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { getOrgSettings, pauseAllRunningTasks } from "../services/services";
@@ -549,9 +550,12 @@ const AttendanceManagement = () => {
       const clockInTime = getCurrentISOTime();
       const isMobileBrowser = /Mobi|Android|iPhone|iPad/i.test(window.navigator.userAgent);
       const platform = isMobileBrowser ? 'mobile' : 'web';
+      const locationMode = orgSettings?.locationMode || 'off';
 
       let clockInLocation = undefined;
-      if (isMobileBrowser && navigator.geolocation) {
+      const needsLocation = locationMode === 'radius' || locationMode === 'address';
+
+      if (needsLocation && navigator.geolocation) {
         try {
           clockInLocation = await new Promise((resolve, reject) => {
             navigator.geolocation.getCurrentPosition(
@@ -561,9 +565,14 @@ const AttendanceManagement = () => {
             );
           });
         } catch {
-          toast.error("Location access denied. Please enable location to clock in from mobile.");
-          setIsClockingIn(false);
-          return;
+          // Mobile or radius mode: location is mandatory — block clock-in
+          if (isMobileBrowser || locationMode === 'radius') {
+            toast.error("Location access denied. Please enable location to clock in.");
+            setIsClockingIn(false);
+            return;
+          }
+          // Web + address mode: non-blocking warning, proceed without location
+          toast.warning("Location access denied — your clock-in address won't be recorded.");
         }
       }
 
@@ -590,7 +599,12 @@ const AttendanceManagement = () => {
         setHasAlreadyClockedIn(true);
         setShowTaskInput(true);
         toast.dismiss();
-        toast.success("Clock in successful!");
+        const resolvedAddress = response.attendance.clockInLocation?.address;
+        if (resolvedAddress) {
+          toast.success(`Clock in successful! Location: ${resolvedAddress}`);
+        } else {
+          toast.success("Clock in successful!");
+        }
 
         // Refresh attendance data
         dispatch(
@@ -600,17 +614,23 @@ const AttendanceManagement = () => {
     } catch (error) {
       console.error(`❌ Clock in failed - Request ID: ${requestId}`, error);
 
+      const errMsg = error?.response?.data?.message || error?.message;
+
       // Check if it's a duplicate error from backend
-      if (error?.message?.includes('already exists')) {
+      if (errMsg?.includes('already exists')) {
         toast.dismiss();
         toast.warning("You have already clocked in for today!");
         setHasAlreadyClockedIn(true);
 
         // Fetch current attendance to sync state
         dispatch(getAttendance({ id: employeeId, date: new Date().toISOString().split("T")[0] }));
+      } else if (errMsg?.includes('away from the office')) {
+        // Geofence violation — show the specific distance message from backend
+        toast.dismiss();
+        toast.error(errMsg);
       } else {
         toast.dismiss();
-        toast.error("Failed to clock in. Please try again.");
+        toast.error(errMsg || "Failed to clock in. Please try again.");
       }
     } finally {
       setIsClockingIn(false);
@@ -1300,6 +1320,9 @@ const AttendanceManagement = () => {
             tasks={reduxTasks}
             clockInSelfie={currentAttendance?.clockInSelfie}
             clockOutSelfie={currentAttendance?.clockOutSelfie}
+            clockInAddress={currentAttendance?.clockInLocation?.address}
+            clockInLatitude={currentAttendance?.clockInLocation?.latitude}
+            clockInLongitude={currentAttendance?.clockInLocation?.longitude}
           />
         )}
         {selectedTab === 1 && (
@@ -1504,6 +1527,23 @@ const AttendanceManagement = () => {
                     variant="outlined"
                     label={`In: ${safeFormat(clockInData.clockInTime, "hh:mm a")}`}
                     sx={{ mt: 1 }}
+                  />
+                )}
+                {currentAttendance?.clockInLocation?.address && (
+                  <Chip
+                    size="small"
+                    icon={<LocationOnIcon fontSize="small" />}
+                    label={currentAttendance.clockInLocation.address}
+                    variant="outlined"
+                    sx={{
+                      mt: 1,
+                      maxWidth: "100%",
+                      "& .MuiChip-label": {
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      },
+                    }}
                   />
                 )}
               </Box>

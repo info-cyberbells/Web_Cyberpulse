@@ -11,6 +11,7 @@ import Holiday from "../model/holidayModel.js";
 import OrganizationSettings from "../model/organizationSettingsModel.js";
 import { createNotification } from "../helpers/createNotification.js";
 import { decryptTime } from "../utils/timeEncryption.js";
+import { reverseGeocode } from "../utils/geocoding.js";
 
 // Helper function to format time for notifications
 const formatNotificationTime = (timestamp) => {
@@ -147,25 +148,34 @@ export const addAttendance = async (req, res) => {
       });
     }
 
-    // Platform check — ios, android, mobile-browser require location; desktop web skips
+    // Platform check — ios, android, mobile-browser require location; desktop web is optional
     const isMobile = platform === 'ios' || platform === 'android' || platform === 'mobile';
-    if (isMobile && !isWFH) {
-      // Location is mandatory on mobile regardless of geofence settings
-      if (!clockInLocation?.latitude || !clockInLocation?.longitude) {
+    let resolvedAddress = null;
+
+    const orgId = req.user?.organizationId;
+    const orgSettings = orgId
+      ? await OrganizationSettings.findOne({ organizationId: orgId })
+      : null;
+    const locationMode = orgSettings?.locationMode || "off";
+
+    if (!isWFH) {
+      const hasLocation = clockInLocation?.latitude != null && clockInLocation?.longitude != null;
+
+      // Mobile always requires location (existing behaviour)
+      if (isMobile && !hasLocation) {
         return res.status(400).json({
           message: 'Location is required to clock in from mobile. Please enable location services.',
         });
       }
 
-      // Geofence distance check — if org has geofence enabled
-      const orgId = req.user?.organizationId;
-      if (orgId) {
-        const orgSettings = await OrganizationSettings.findOne({ organizationId: orgId });
-        if (
-          orgSettings?.geofenceEnabled &&
-          orgSettings?.geofenceLatitude != null &&
-          orgSettings?.geofenceLongitude != null
-        ) {
+      // Radius mode: requires location on any platform + enforce distance check
+      if (locationMode === "radius") {
+        if (!hasLocation) {
+          return res.status(400).json({
+            message: 'Location is required for this organization. Please enable location services.',
+          });
+        }
+        if (orgSettings.geofenceLatitude != null && orgSettings.geofenceLongitude != null) {
           const distance = calculateDistance(
             clockInLocation.latitude,
             clockInLocation.longitude,
@@ -179,6 +189,14 @@ export const addAttendance = async (req, res) => {
             });
           }
         }
+      }
+
+      // Resolve address whenever location is present and tracking is enabled
+      if (hasLocation && (locationMode === "radius" || locationMode === "address")) {
+        resolvedAddress = await reverseGeocode(
+          clockInLocation.latitude,
+          clockInLocation.longitude
+        );
       }
     }
 
@@ -211,7 +229,13 @@ export const addAttendance = async (req, res) => {
       clockInSelfie: clockInImagePath,
       clockOutSelfie: clockOutImagePath,
       isWFH: isWFH || false,
-      clockInLocation: clockInLocation || undefined,
+      clockInLocation: clockInLocation
+        ? {
+            latitude: clockInLocation.latitude,
+            longitude: clockInLocation.longitude,
+            address: resolvedAddress,
+          }
+        : undefined,
       ...(organizationId && { organizationId }),
     });
 
@@ -766,6 +790,9 @@ export const getAllEmployeesAttendanceAndTasksByDate = async (req, res) => {
           todayClockInPlatform: todayAttendance?.platform || lastAttendance?.lastClockInPlatform || null,
           todayClockInSelfie: processImageUrl(todayAttendance?.clockInSelfie),
           todayClockOutSelfie: processImageUrl(todayAttendance?.clockOutSelfie),
+          todayClockInAddress: todayAttendance?.clockInLocation?.address || null,
+          todayClockInLatitude: todayAttendance?.clockInLocation?.latitude ?? null,
+          todayClockInLongitude: todayAttendance?.clockInLocation?.longitude ?? null,
           lastClockIn: lastAttendance?.lastClockIn || null,
           lastClockOut: lastAttendance?.lastClockOut || null,
           lastClockInSelfie: processImageUrl(lastAttendance?.lastClockInSelfie),
@@ -821,7 +848,7 @@ export const getAttendanceAndTasksByEmployeeAndMonth = async (req, res) => {
       date: { $gte: startOfMonth, $lte: endOfMonth },
     })
       .populate('employeeId') // get full employee info
-      .select('date clockInTime clockOutTime clockInSelfie clockOutSelfie autoClockOut employeeId breakTimings breakTime');
+      .select('date clockInTime clockOutTime clockInSelfie clockOutSelfie autoClockOut employeeId breakTimings breakTime clockInLocation');
 
     const monthlyTasks = await Task.find({
       employeeId,
@@ -843,6 +870,9 @@ export const getAttendanceAndTasksByEmployeeAndMonth = async (req, res) => {
         autoClockOut: record.autoClockOut || false,
         breakTimings: record.breakTimings,
         breakTime: record.breakTime,
+        clockInAddress: record.clockInLocation?.address || null,
+        clockInLatitude: record.clockInLocation?.latitude ?? null,
+        clockInLongitude: record.clockInLocation?.longitude ?? null,
       };
     });
 

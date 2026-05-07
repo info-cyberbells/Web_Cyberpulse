@@ -32,9 +32,10 @@ const organizationSettingsSchema = new mongoose.Schema(
       max: 59,
     },
 
-    geofenceEnabled: {
-      type: Boolean,
-      default: false,
+    locationMode: {
+      type: String,
+      enum: ["off", "radius", "address"],
+      default: "off",
     },
     geofenceLatitude: {
       type: Number,
@@ -42,6 +43,10 @@ const organizationSettingsSchema = new mongoose.Schema(
     },
     geofenceLongitude: {
       type: Number,
+      default: null,
+    },
+    geofenceAddress: {
+      type: String,
       default: null,
     },
     geofenceRadius: {

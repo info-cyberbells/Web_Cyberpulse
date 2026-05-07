@@ -44,6 +44,7 @@ const AttendanceSchema = new mongoose.Schema({
   clockInLocation: {
     latitude: { type: Number, default: null },
     longitude: { type: Number, default: null },
+    address: { type: String, default: null },
   },
 
   Employeestatus: {

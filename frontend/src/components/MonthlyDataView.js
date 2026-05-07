@@ -20,6 +20,7 @@ import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import { format } from "date-fns";
 import parse from 'html-react-parser';
+import { API_BASE_URL } from "../constants/apiConstants";
 
 const StyledAccordion = styled(Accordion)(({ theme }) => ({
   margin: "8px 0",
@@ -227,9 +228,20 @@ const MonthlyDataView = ({
                                 No photo
                               </Box>
                             )}
-                            <Typography variant="body2">
-                              {safeFormat(day.attendance?.clockInTime, "MMM-dd-yyyy hh:mm a")}
-                            </Typography>
+                            <Box>
+                              <Typography variant="body2">
+                                {safeFormat(day.attendance?.clockInTime, "MMM-dd-yyyy hh:mm a")}
+                              </Typography>
+                              {day.attendance?.clockInAddress && (
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                  sx={{ display: "block", mt: 0.5 }}
+                                >
+                                  📍 {day.attendance.clockInAddress}
+                                </Typography>
+                              )}
+                            </Box>
                           </Box>
                         </Paper>
                       </Grid>
@@ -279,6 +291,48 @@ const MonthlyDataView = ({
                           </Box>
                         </Paper>
                       </Grid>
+                      {day.attendance?.clockInLatitude != null &&
+                        day.attendance?.clockInLongitude != null && (
+                          <Grid item xs={12}>
+                            <Paper elevation={0} sx={{ p: 2, bgcolor: "#f8f9fa" }}>
+                              <Typography
+                                variant="subtitle2"
+                                color="primary"
+                                gutterBottom
+                              >
+                                Clock In Location
+                              </Typography>
+                              <Box
+                                component="a"
+                                href={`https://www.google.com/maps?q=${day.attendance.clockInLatitude},${day.attendance.clockInLongitude}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                sx={{ display: "block", textDecoration: "none" }}
+                              >
+                                <Box
+                                  component="img"
+                                  src={`${API_BASE_URL}/org-settings/static-map?lat=${day.attendance.clockInLatitude}&lng=${day.attendance.clockInLongitude}&zoom=16&size=600x240`}
+                                  alt="Clock-in location map"
+                                  sx={{
+                                    width: "100%",
+                                    maxWidth: 600,
+                                    borderRadius: 1,
+                                    display: "block",
+                                    border: "1px solid #e0e0e0",
+                                    cursor: "pointer",
+                                  }}
+                                />
+                              </Box>
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{ display: "block", mt: 0.5 }}
+                              >
+                                Tap to open in Google Maps
+                              </Typography>
+                            </Paper>
+                          </Grid>
+                        )}
                       <Grid item xs={12}>
                         <Box sx={{ mt: 1 }}>
                           <Typography

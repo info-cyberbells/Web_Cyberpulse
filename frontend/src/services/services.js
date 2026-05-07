@@ -1408,6 +1408,15 @@ export const updateOrgSettings = async (orgId, data) => {
   }
 };
 
+export const geocodeLocation = async (payload) => {
+  try {
+    const response = await apiClient.post(API_ROUTES.GEOCODE_LOCATION, payload);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 // Admin Profile Services
 export const getAdminProfile = async () => {
   try {

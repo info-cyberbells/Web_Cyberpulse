@@ -128,6 +128,7 @@ export const API_ROUTES = {
 
   GET_ORG_SETTINGS: "/org-settings/",
   UPDATE_ORG_SETTINGS: "/org-settings/",
+  GEOCODE_LOCATION: "/org-settings/geocode",
 
   GET_USER_NOTIF_PREFERENCES: "/notification-preferences",
   UPDATE_USER_NOTIF_PREFERENCES: "/notification-preferences",

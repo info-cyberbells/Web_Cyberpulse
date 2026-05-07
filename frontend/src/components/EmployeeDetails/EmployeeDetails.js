@@ -1088,6 +1088,15 @@ const EmployeeDetails = () => {
                                                 <strong>Clock In:</strong>{' '}
                                                 {day.attendance?.clockInTime ? formatTime(day.attendance.clockInTime) : 'N/A'}
                                             </Typography>
+                                            {day.attendance?.clockInAddress && (
+                                                <Typography
+                                                    variant="caption"
+                                                    color="text.secondary"
+                                                    sx={{ display: 'block', mt: 0.5 }}
+                                                >
+                                                    📍 {day.attendance.clockInAddress}
+                                                </Typography>
+                                            )}
                                         </Grid>
                                         <Grid item xs={12} sm={3}>
                                             <Typography variant="body1" sx={{ fontSize: '1rem' }}>
@@ -1111,6 +1120,36 @@ const EmployeeDetails = () => {
                                                 )}
                                             </Typography>
                                         </Grid>
+                                        {day.attendance?.clockInLatitude != null &&
+                                            day.attendance?.clockInLongitude != null && (
+                                                <Grid item xs={12} sm={6}>
+                                                    <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                                                        Clock In Location
+                                                    </Typography>
+                                                    <a
+                                                        href={`https://www.google.com/maps?q=${day.attendance.clockInLatitude},${day.attendance.clockInLongitude}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        style={{ display: 'block', textDecoration: 'none' }}
+                                                    >
+                                                        <img
+                                                            src={`${API_BASE_URL}/org-settings/static-map?lat=${day.attendance.clockInLatitude}&lng=${day.attendance.clockInLongitude}&zoom=16&size=600x220`}
+                                                            alt="Clock-in location map"
+                                                            style={{
+                                                                width: '100%',
+                                                                maxWidth: 600,
+                                                                borderRadius: 8,
+                                                                display: 'block',
+                                                                border: '1px solid #e0e0e0',
+                                                                cursor: 'pointer',
+                                                            }}
+                                                        />
+                                                    </a>
+                                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                                                        Click to open in Google Maps
+                                                    </Typography>
+                                                </Grid>
+                                            )}
                                         <Grid item xs={12}>
                                             <Typography variant="h6" sx={{ fontSize: '1.2rem', mt: 2, mb: 1 }}>
                                                 Break Details

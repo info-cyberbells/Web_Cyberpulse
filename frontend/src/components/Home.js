@@ -23,6 +23,9 @@ import {
 } from "@mui/material";
 import LocalCafeIcon from '@mui/icons-material/LocalCafe';
 import CloseIcon from "@mui/icons-material/Close";
+import MapIcon from "@mui/icons-material/Map";
+import Popover from "@mui/material/Popover";
+import { API_BASE_URL } from "../constants/apiConstants";
 import { fetchCurrentEmpAttendanceAsync, fetchAutoClockOutAsync } from "../features/attendance/attendanceSlice";
 import ImageZoomModal from "../components/HomeAndEmployeeSelfie/ImageZoomModal";
 import HistoryIcon from "@mui/icons-material/History";
@@ -72,6 +75,15 @@ const Home = ({ open, isMobile }) => {
   });
 
   const [attendanceFilter, setAttendanceFilter] = useState('active');
+  const [mapPopover, setMapPopover] = useState({ anchorEl: null, lat: null, lng: null, address: null });
+
+  const handleOpenMap = (event, lat, lng, address) => {
+    event.stopPropagation();
+    setMapPopover({ anchorEl: event.currentTarget, lat, lng, address });
+  };
+  const handleCloseMap = () => {
+    setMapPopover({ anchorEl: null, lat: null, lng: null, address: null });
+  };
 
   function cleanTaskDescription(html) {
     // If the input is already properly formatted, just return it
@@ -810,6 +822,43 @@ const Home = ({ open, isMobile }) => {
                         >
                           {attendanceStatus.message}
                         </Typography>
+                        {employee.attendance?.todayClockInAddress && (
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 0.25, maxWidth: 260 }}>
+                            <Typography
+                              variant="caption"
+                              title={employee.attendance.todayClockInAddress}
+                              sx={{
+                                fontSize: "0.72rem",
+                                color: "text.secondary",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                                flex: 1,
+                              }}
+                            >
+                              📍 {employee.attendance.todayClockInAddress}
+                            </Typography>
+                            {employee.attendance?.todayClockInLatitude != null &&
+                              employee.attendance?.todayClockInLongitude != null && (
+                                <Tooltip title="View on map">
+                                  <IconButton
+                                    size="small"
+                                    onClick={(e) =>
+                                      handleOpenMap(
+                                        e,
+                                        employee.attendance.todayClockInLatitude,
+                                        employee.attendance.todayClockInLongitude,
+                                        employee.attendance.todayClockInAddress
+                                      )
+                                    }
+                                    sx={{ p: 0.25 }}
+                                  >
+                                    <MapIcon sx={{ fontSize: 16, color: "primary.main" }} />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                          </Box>
+                        )}
                       </TableCell>
                       <TableCell sx={{ py: 1.5 }}>
                         <Typography
@@ -1314,6 +1363,45 @@ const Home = ({ open, isMobile }) => {
           imageSrc={zoomImage.image}
           employeeName={zoomImage.name}
         />
+
+        <Popover
+          open={Boolean(mapPopover.anchorEl)}
+          anchorEl={mapPopover.anchorEl}
+          onClose={handleCloseMap}
+          anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+          transformOrigin={{ vertical: "top", horizontal: "center" }}
+          PaperProps={{ sx: { p: 1.5, borderRadius: 2, maxWidth: 520 } }}
+        >
+          {mapPopover.address && (
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1, maxWidth: 480 }}>
+              📍 {mapPopover.address}
+            </Typography>
+          )}
+          {mapPopover.lat != null && mapPopover.lng != null && (
+            <a
+              href={`https://www.google.com/maps?q=${mapPopover.lat},${mapPopover.lng}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: "block", textDecoration: "none" }}
+            >
+              <img
+                src={`${API_BASE_URL}/org-settings/static-map?lat=${mapPopover.lat}&lng=${mapPopover.lng}&zoom=16&size=480x260`}
+                alt="Clock-in location map"
+                style={{
+                  width: 480,
+                  maxWidth: "100%",
+                  borderRadius: 6,
+                  display: "block",
+                  border: "1px solid #e0e0e0",
+                  cursor: "pointer",
+                }}
+              />
+            </a>
+          )}
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+            Click map to open in Google Maps
+          </Typography>
+        </Popover>
 
       </Container>
     </Box>

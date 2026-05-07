@@ -1,7 +1,8 @@
 import React from "react";
-import { Box, Typography, Divider, Stack, Paper, Chip } from "@mui/material";
+import { Box, Typography, Stack, Paper, Chip, Link } from "@mui/material";
 import SelfieDisplay from "./SelfieDisplay";
 import parse from 'html-react-parser';
+import { API_BASE_URL } from "../../constants/apiConstants";
 
 const DailyReport = ({
   clockInData,
@@ -10,6 +11,9 @@ const DailyReport = ({
   tasks,
   clockInSelfie,
   clockOutSelfie,
+  clockInAddress,
+  clockInLatitude,
+  clockInLongitude,
 }) => {
 
   const getStatusStyle = (status) => {
@@ -113,6 +117,11 @@ const DailyReport = ({
             <Typography variant="body1">
               {formatDateTime(clockInData?.clockInTime)}
             </Typography>
+            {clockInAddress && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                📍 {clockInAddress}
+              </Typography>
+            )}
           </Box>
           <Box>
             <Typography variant="body2" color="text.secondary" gutterBottom>
@@ -144,6 +153,42 @@ const DailyReport = ({
           title="Today's Attendance Selfies"
         />
       </Paper>
+
+      {clockInLatitude != null && clockInLongitude != null && (
+        <Paper elevation={1} sx={{ p: 2 }}>
+          <Typography variant="h6" gutterBottom fontWeight={500}>
+            Clock In Location
+          </Typography>
+          {clockInAddress && (
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+              📍 {clockInAddress}
+            </Typography>
+          )}
+          <Link
+            href={`https://www.google.com/maps?q=${clockInLatitude},${clockInLongitude}`}
+            target="_blank"
+            rel="noopener"
+            underline="none"
+          >
+            <Box
+              component="img"
+              src={`${API_BASE_URL}/org-settings/static-map?lat=${clockInLatitude}&lng=${clockInLongitude}&zoom=16&size=600x260`}
+              alt="Clock-in location map"
+              sx={{
+                width: "100%",
+                borderRadius: 1,
+                display: "block",
+                border: "1px solid",
+                borderColor: "divider",
+                cursor: "pointer",
+              }}
+            />
+          </Link>
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+            Tap to open in Google Maps
+          </Typography>
+        </Paper>
+      )}
 
       <Paper elevation={1} sx={{ p: 2 }}>
         <Typography variant="h6" gutterBottom fontWeight={500}>

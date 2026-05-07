@@ -15,11 +15,18 @@ import {
   Switch,
   Tab,
   Tabs,
+  Radio,
+  RadioGroup,
+  FormControlLabel,
+  InputAdornment,
+  Alert,
 } from "@mui/material";
 import SettingsIcon from "@mui/icons-material/Settings";
 import SaveIcon from "@mui/icons-material/Save";
 import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import TuneIcon from "@mui/icons-material/Tune";
+import MyLocationIcon from "@mui/icons-material/MyLocation";
+import SearchIcon from "@mui/icons-material/Search";
 import {
   Login as LoginIcon,
   Logout as LogoutIcon,
@@ -33,7 +40,7 @@ import {
 } from "@mui/icons-material";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { getOrgSettings, updateOrgSettings } from "../services/services";
+import { getOrgSettings, updateOrgSettings, geocodeLocation } from "../services/services";
 import {
   fetchSettings,
   saveSettings,
@@ -109,7 +116,14 @@ const Settings = () => {
     maxBreakDurationMinutes: 60,
     minClockOutHour: 18,
     minClockOutMinute: 0,
+    locationMode: "off",
+    geofenceLatitude: null,
+    geofenceLongitude: null,
+    geofenceAddress: "",
+    geofenceRadius: 100,
   });
+  const [addressSearch, setAddressSearch] = useState("");
+  const [geocodeLoading, setGeocodeLoading] = useState(false);
 
   // --- Notification Settings State ---
   const { settings: notifSettings, loading: notifLoading } = useSelector(
@@ -153,6 +167,11 @@ const Settings = () => {
             maxBreakDurationMinutes: response.data.maxBreakDurationMinutes ?? 60,
             minClockOutHour: response.data.minClockOutHour ?? 18,
             minClockOutMinute: response.data.minClockOutMinute ?? 0,
+            locationMode: response.data.locationMode ?? "off",
+            geofenceLatitude: response.data.geofenceLatitude ?? null,
+            geofenceLongitude: response.data.geofenceLongitude ?? null,
+            geofenceAddress: response.data.geofenceAddress ?? "",
+            geofenceRadius: response.data.geofenceRadius ?? 100,
           });
         }
       } catch (error) {
@@ -208,6 +227,16 @@ const Settings = () => {
       toast.error("Clock out minute must be between 0 and 59");
       return;
     }
+    if (orgSettings.locationMode === "radius") {
+      if (orgSettings.geofenceLatitude == null || orgSettings.geofenceLongitude == null) {
+        toast.error("Please set office coordinates for radius mode");
+        return;
+      }
+      if (!orgSettings.geofenceRadius || orgSettings.geofenceRadius <= 0) {
+        toast.error("Radius must be greater than 0");
+        return;
+      }
+    }
 
     setOrgSaving(true);
     try {
@@ -222,6 +251,73 @@ const Settings = () => {
       toast.error(error?.response?.data?.error || "Failed to update settings");
     } finally {
       setOrgSaving(false);
+    }
+  };
+
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by this browser");
+      return;
+    }
+    setGeocodeLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        try {
+          const response = await geocodeLocation({ latitude, longitude });
+          const address = response?.success
+            ? response.data.formattedAddress
+            : "";
+          setOrgSettings((prev) => ({
+            ...prev,
+            geofenceLatitude: latitude,
+            geofenceLongitude: longitude,
+            geofenceAddress: address,
+          }));
+          toast.success("Location captured");
+        } catch (err) {
+          setOrgSettings((prev) => ({
+            ...prev,
+            geofenceLatitude: latitude,
+            geofenceLongitude: longitude,
+          }));
+          toast.warning("Coordinates set, but address lookup failed");
+        } finally {
+          setGeocodeLoading(false);
+        }
+      },
+      (err) => {
+        setGeocodeLoading(false);
+        toast.error("Failed to get current location: " + err.message);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  const handleSearchAddress = async () => {
+    if (!addressSearch.trim()) {
+      toast.error("Please enter an address");
+      return;
+    }
+    setGeocodeLoading(true);
+    try {
+      const response = await geocodeLocation({ address: addressSearch.trim() });
+      if (response?.success) {
+        const { latitude, longitude, formattedAddress } = response.data;
+        setOrgSettings((prev) => ({
+          ...prev,
+          geofenceLatitude: latitude,
+          geofenceLongitude: longitude,
+          geofenceAddress: formattedAddress,
+        }));
+        toast.success("Address resolved");
+      } else {
+        toast.error("Address not found");
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.error || "Failed to resolve address");
+    } finally {
+      setGeocodeLoading(false);
     }
   };
 
@@ -405,6 +501,170 @@ const Settings = () => {
                     sx={{ width: 140, "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
                   />
                 </Stack>
+              </Box>
+
+              <Divider />
+
+              {/* Location Tracking */}
+              <Box>
+                <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1 }}>
+                  Location Tracking
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                  Choose how employee location should be handled on mobile clock-in.
+                </Typography>
+
+                <RadioGroup
+                  value={orgSettings.locationMode}
+                  onChange={(e) =>
+                    setOrgSettings({ ...orgSettings, locationMode: e.target.value })
+                  }
+                >
+                  <FormControlLabel
+                    value="off"
+                    control={<Radio />}
+                    label={
+                      <Box>
+                        <Typography variant="body2" fontWeight={500}>Off</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          No geofence, no address lookup. Coordinates still captured on mobile.
+                        </Typography>
+                      </Box>
+                    }
+                  />
+                  <FormControlLabel
+                    value="radius"
+                    control={<Radio />}
+                    label={
+                      <Box>
+                        <Typography variant="body2" fontWeight={500}>Radius-based</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Employees must be within a set radius of the office to clock in.
+                        </Typography>
+                      </Box>
+                    }
+                  />
+                  <FormControlLabel
+                    value="address"
+                    control={<Radio />}
+                    label={
+                      <Box>
+                        <Typography variant="body2" fontWeight={500}>Address-based</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Employees can clock in from anywhere; their location address is recorded.
+                        </Typography>
+                      </Box>
+                    }
+                  />
+                </RadioGroup>
+
+                {orgSettings.locationMode === "radius" && (
+                  <Box sx={{ mt: 2, pl: { xs: 0, sm: 4 } }}>
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      Set your office location. Employees outside this radius won't be able to clock in from mobile.
+                    </Alert>
+
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        placeholder="Search an address (e.g. office name, street)"
+                        value={addressSearch}
+                        onChange={(e) => setAddressSearch(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleSearchAddress();
+                          }
+                        }}
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <SearchIcon fontSize="small" />
+                            </InputAdornment>
+                          ),
+                        }}
+                        sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
+                      />
+                      <Button
+                        variant="outlined"
+                        onClick={handleSearchAddress}
+                        disabled={geocodeLoading}
+                        sx={{ borderRadius: 2, textTransform: "none", whiteSpace: "nowrap" }}
+                      >
+                        Search
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        startIcon={<MyLocationIcon />}
+                        onClick={handleUseCurrentLocation}
+                        disabled={geocodeLoading}
+                        sx={{ borderRadius: 2, textTransform: "none", whiteSpace: "nowrap" }}
+                      >
+                        Use Current
+                      </Button>
+                    </Stack>
+
+                    {orgSettings.geofenceAddress && (
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ mb: 2, fontStyle: "italic" }}
+                      >
+                        Resolved: {orgSettings.geofenceAddress}
+                      </Typography>
+                    )}
+
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                      <TextField
+                        type="number"
+                        label="Latitude"
+                        value={orgSettings.geofenceLatitude ?? ""}
+                        onChange={(e) =>
+                          setOrgSettings({
+                            ...orgSettings,
+                            geofenceLatitude: e.target.value === "" ? null : Number(e.target.value),
+                          })
+                        }
+                        size="small"
+                        sx={{ flex: 1, "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
+                      />
+                      <TextField
+                        type="number"
+                        label="Longitude"
+                        value={orgSettings.geofenceLongitude ?? ""}
+                        onChange={(e) =>
+                          setOrgSettings({
+                            ...orgSettings,
+                            geofenceLongitude: e.target.value === "" ? null : Number(e.target.value),
+                          })
+                        }
+                        size="small"
+                        sx={{ flex: 1, "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
+                      />
+                      <TextField
+                        type="number"
+                        label="Radius (m)"
+                        value={orgSettings.geofenceRadius}
+                        onChange={(e) =>
+                          setOrgSettings({
+                            ...orgSettings,
+                            geofenceRadius: Number(e.target.value),
+                          })
+                        }
+                        inputProps={{ min: 1 }}
+                        size="small"
+                        sx={{ width: { xs: "100%", sm: 140 }, "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
+                      />
+                    </Stack>
+                  </Box>
+                )}
+
+                {orgSettings.locationMode === "address" && (
+                  <Alert severity="info" sx={{ mt: 2 }}>
+                    Employees can clock in from anywhere. Their GPS coordinates and the resolved address will be saved on each clock-in.
+                  </Alert>
+                )}
               </Box>
 
               <Divider />
