@@ -150,7 +150,7 @@ const Home = ({ open, isMobile }) => {
 
     const fetchAttendancee = async () => {
       try {
-        const today = new Date().toISOString().split("T")[0];
+        const today = new Date().toLocaleDateString('en-CA');
         await dispatch(fetchCurrentEmpAttendanceAsync({ date: today, isInitialFetch })).unwrap();
       } catch (err) {
         console.error("Failed to fetch attendance:", err);
@@ -229,7 +229,7 @@ const Home = ({ open, isMobile }) => {
     if (isNaN(dateTime.getTime())) {
       return "Invalid Date";
     }
-    const date = dateTime.toISOString().split("T")[0];
+    const date = dateTime.toLocaleDateString('en-CA');
     const hours = dateTime.getHours();
     const minutes = dateTime.getMinutes();
     const ampm = hours >= 12 ? "PM" : "AM";

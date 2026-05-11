@@ -231,10 +231,10 @@ export const addAttendance = async (req, res) => {
       isWFH: isWFH || false,
       clockInLocation: clockInLocation
         ? {
-            latitude: clockInLocation.latitude,
-            longitude: clockInLocation.longitude,
-            address: resolvedAddress,
-          }
+          latitude: clockInLocation.latitude,
+          longitude: clockInLocation.longitude,
+          address: resolvedAddress,
+        }
         : undefined,
       ...(organizationId && { organizationId }),
     });
@@ -1914,70 +1914,77 @@ export const getPreviousDayAutoClockOutEmployees = async (req, res) => {
 
 
 
-cron.schedule('0 21 * * *', async () => {
-  console.log('🕒 Running daily auto clock-out process at 9:00 PM...');
+// ============================================================
+// AUTO CLOCK-OUT CRON — DISABLED (Client Requirement)
+// Reason: Causing issues for night shift employees.
+// Previously ran at 9:00 PM daily and force-clocked out all
+// employees who hadn't manually clocked out, setting their
+// clock-out time to 6:30 PM. Re-enable by uncommenting below.
+// ============================================================
 
-  try {
-    const today = new Date().toISOString().split('T')[0];
-
-    const unclockedEmployees = await Attendance.find({
-      clockInTime: { $exists: true },
-      clockOutTime: null,
-      date: today,
-    });
-
-    if (unclockedEmployees.length === 0) {
-      console.log('No employees require auto clock-out today.');
-      return;
-    }
-
-
-    const fixedClockOutTime = `${today}T18:30:00`;
-
-    for (const attendance of unclockedEmployees) {
-      // Pause all running tasks for this employee before clocking out
-      const runningTasks = await Task.find({
-        employeeId: attendance.employeeId,
-        status: 'In Progress',
-        isDeleted: false
-      });
-
-      const clockOutTime = new Date(fixedClockOutTime);
-      for (const task of runningTasks) {
-        if (task.workSessions.length > 0) {
-          const currentSession = task.workSessions[task.workSessions.length - 1];
-          if (!currentSession.endTime) {
-            currentSession.endTime = clockOutTime;
-            currentSession.duration = Math.floor((clockOutTime - currentSession.startTime) / 1000);
-            task.duration += currentSession.duration;
-          }
-        }
-        task.status = 'Paused';
-        task.pauseTime = clockOutTime;
-        await task.save();
-        console.log(`Auto-paused task ${task._id} for employee ${attendance.employeeId}`);
-      }
-
-      attendance.clockOutTime = fixedClockOutTime;
-      attendance.isEmergency = true;
-      attendance.emergencyReason = 'Auto Clock-Out due to no manual clock-out';
-      attendance.autoClockOut = true;
-      attendance.Employeestatus = 'clocked out';
-
-      if (!attendance.workingDay || attendance.workingDay === 0) {
-        attendance.workingDay = 1;
-      }
-
-      await attendance.save();
-
-      console.log(`Auto clocked out employee: ${attendance.employeeId} at ${attendance.clockOutTime}`);
-    }
-
-    console.log(' Auto clock-out process completed successfully!');
-  } catch (error) {
-    console.error('Error during auto clock-out:', error.message);
-  }
-});
+// cron.schedule('0 21 * * *', async () => {
+//   console.log('🕒 Running daily auto clock-out process at 9:00 PM...');
+//
+//   try {
+//     const today = new Date().toISOString().split('T')[0];
+//
+//     const unclockedEmployees = await Attendance.find({
+//       clockInTime: { $exists: true },
+//       clockOutTime: null,
+//       date: today,
+//     });
+//
+//     if (unclockedEmployees.length === 0) {
+//       console.log('No employees require auto clock-out today.');
+//       return;
+//     }
+//
+//     const fixedClockOutTime = `${today}T18:30:00`;
+//
+//     for (const attendance of unclockedEmployees) {
+//       // Pause all running tasks for this employee before clocking out
+//       const runningTasks = await Task.find({
+//         employeeId: attendance.employeeId,
+//         status: 'In Progress',
+//         isDeleted: false
+//       });
+//
+//       const clockOutTime = new Date(fixedClockOutTime);
+//       for (const task of runningTasks) {
+//         if (task.workSessions.length > 0) {
+//           const currentSession = task.workSessions[task.workSessions.length - 1];
+//           if (!currentSession.endTime) {
+//             currentSession.endTime = clockOutTime;
+//             currentSession.duration = Math.floor((clockOutTime - currentSession.startTime) / 1000);
+//             task.duration += currentSession.duration;
+//           }
+//         }
+//         task.status = 'Paused';
+//         task.pauseTime = clockOutTime;
+//         await task.save();
+//         console.log(`Auto-paused task ${task._id} for employee ${attendance.employeeId}`);
+//       }
+//
+//       attendance.clockOutTime = fixedClockOutTime;
+//       attendance.isEmergency = true;
+//       attendance.emergencyReason = 'Auto Clock-Out due to no manual clock-out';
+//       attendance.autoClockOut = true;
+//       attendance.Employeestatus = 'clocked out';
+//
+//       if (!attendance.workingDay || attendance.workingDay === 0) {
+//         attendance.workingDay = 1;
+//       }
+//
+//       await attendance.save();
+//
+//       console.log(`Auto clocked out employee: ${attendance.employeeId} at ${attendance.clockOutTime}`);
+//     }
+//
+//     console.log(' Auto clock-out process completed successfully!');
+//   } catch (error) {
+//     console.error('Error during auto clock-out:', error.message);
+//   }
+// });
 
 
 

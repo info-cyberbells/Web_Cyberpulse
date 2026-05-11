@@ -139,7 +139,7 @@ const HRDashboard = () => {
 
   // Fetch on mount
   useEffect(() => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = new Date().toLocaleDateString('en-CA');
     dispatch(fetchCurrentEmpAttendanceAsync({ date: today, isInitialFetch: true }));
     dispatch(fetchEmployeeList());
     dispatch(fetchLeaveList());

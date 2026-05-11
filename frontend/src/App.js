@@ -99,7 +99,7 @@ function AppContent() {
   // Fetch attendance & chat data globally for TopNavbar
   useEffect(() => {
     if (isAuthenticated && employeeData?.id) {
-      const today = new Date().toISOString().split("T")[0];
+      const today = new Date().toLocaleDateString('en-CA');
       dispatch(getAttendance({ id: employeeData.id, date: today }));
       dispatch(fetchConversations());
     }
@@ -330,7 +330,7 @@ function AppContent() {
             <Route path="/add-employee/:employeeId" element={<EmployeeDetails />} />
             <Route path="/help-desk" element={<SupportDeskPage />} />
             <Route path="/annoucement" element={<Announcement />} />
-            <Route path="/holidays" element={<HolidaysUser />} />
+            <Route path="/holidays" element={<Holidays />} />
             <Route path="/task" element={<TaskManagement />} />
             <Route path="/dashboard" element={<HRDashboard />} />
             <Route path="/attendance" element={<AttendanceManagement />} />
