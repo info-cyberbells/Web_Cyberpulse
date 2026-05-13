@@ -57,6 +57,22 @@ const organizationSettingsSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+
+    // ── Leave Quota Policy ────────────────────────────────────────────────────
+    // "quarterly_reset"   → reset all employees in this org to 3 every Jan/Apr/Jul/Oct
+    // "monthly_increment" → add +1 to every employee's leaveQuota each month
+    leaveQuotaPolicy: {
+      type: String,
+      enum: ["quarterly_reset", "monthly_increment"],
+      default: "quarterly_reset",
+    },
+    // Month (1-12) from which monthly-increment accumulation begins.
+    leaveQuotaIncrementStartMonth: {
+      type: Number,
+      default: 4,
+      min: 1,
+      max: 12,
+    },
   },
   { timestamps: true }
 );

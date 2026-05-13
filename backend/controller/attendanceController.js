@@ -1,5 +1,5 @@
-import cron from 'node-cron';
-console.log('✅ CRON Job Loaded Successfully!');
+// import cron from 'node-cron';
+// console.log('✅ CRON Job Loaded Successfully!');
 import Attendance from '../model/AttendanceModel.js';
 import Employee from '../model/employeeModel.js';
 import Task from '../model/TaskModel.js';
@@ -16,12 +16,24 @@ import { reverseGeocode } from "../utils/geocoding.js";
 // Helper function to format time for notifications
 const formatNotificationTime = (timestamp) => {
   try {
+    if (!timestamp) return "";
+    
+    // If it's already a simple time format (e.g., "09:58 AM" or "18:30"), return as-is
+    const simpleTimeRegex = /^(0?[1-9]|1[0-2]):[0-5][0-9]\s?(AM|PM)$/i;
+    const militaryTimeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/;
+    if (typeof timestamp === "string" && (simpleTimeRegex.test(timestamp) || militaryTimeRegex.test(timestamp))) {
+      return timestamp;
+    }
+
     const date = new Date(timestamp);
     if (isNaN(date.getTime())) return timestamp;
+
+    // Convert ISO/UTC to IST
     return date.toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
       hour12: true,
+      timeZone: "Asia/Kolkata",
     });
   } catch {
     return timestamp;
@@ -1768,17 +1780,28 @@ export const updateAttendance = async (req, res) => {
         if (!isNaN(clockIn) && !isNaN(clockOut)) {
           const hoursWorked = (clockOut - clockIn) / (1000 * 60 * 60);
 
-          if (hoursWorked >= 8) {
+          // Fetch organization settings for required hours
+          const emp = await Employee.findById(attendance.employeeId).select("organizationId");
+          const orgSettings = emp?.organizationId 
+            ? await OrganizationSettings.findOne({ organizationId: emp.organizationId })
+            : null;
+          const requiredHours = orgSettings?.requiredHoursPerDay || 8;
+
+          const fraction = hoursWorked / requiredHours;
+
+          if (fraction >= 0.95) {
             attendance.workingDay = 1;
-          } else if (hoursWorked >= 5) {
+          } else if (fraction >= 0.7) {
             attendance.workingDay = 0.75;
-          } else if (hoursWorked >= 3.5) {
+          } else if (fraction >= 0.45) {
             attendance.workingDay = 0.5;
-          } else if (hoursWorked > 0) {
+          } else if (fraction > 0) {
             attendance.workingDay = 0.25;
           } else {
             attendance.workingDay = 0;
           }
+
+          console.log(`Calculated working hours: ${hoursWorked.toFixed(2)}, Required: ${requiredHours}, Working day: ${attendance.workingDay}`);
 
           console.log(`Calculated working hours: ${hoursWorked.toFixed(2)}, Working day: ${attendance.workingDay}`);
         }
@@ -2504,19 +2527,23 @@ export const getMonthlyAttendance = async (req, res) => {
         let status = "Absent";
         let presence = 0;
 
-        // Updated logic to handle all workingDay values
-        if (workingDay === 1) {
-          status = "Present";
-          presence = 1;
-        } else if (workingDay === 0.75) {
-          status = "Quator Day";  // 3/4 day
-          presence = 0.75;
-        } else if (workingDay === 0.5) {
-          status = "Half Day";
-          presence = 0.5;
-        } else if (workingDay === 0.25) {
-          status = "Quarter Day"; // 1/4 day
-          presence = 0.25;
+        if (hoursWorked > 0) {
+          // Calculate presence steps based on hours worked relative to required hours
+          const fraction = hoursWorked / requiredHoursPerDay;
+
+          if (fraction >= 0.95) { // 95% or more is a full day
+            status = "Present";
+            presence = 1;
+          } else if (fraction >= 0.7) {
+            status = "Three Quarter Day";
+            presence = 0.75;
+          } else if (fraction >= 0.45) {
+            status = "Half Day";
+            presence = 0.5;
+          } else {
+            status = "Quarter Day";
+            presence = 0.25;
+          }
         } else if (isLeaveApplied) {
           status = "On Leave";
           if (isPastOrToday) {

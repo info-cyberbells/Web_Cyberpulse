@@ -26,8 +26,8 @@ export const getOrgSettings = async (req, res) => {
     ]);
 
     const fullUrl = `${req.protocol}://${req.get("host")}`;
-    const logoUrl = organization?.logo && organization.logo.startsWith("/uploads/") 
-      ? `${fullUrl}${organization.logo}` 
+    const logoUrl = organization?.logo && organization.logo.startsWith("/uploads/")
+      ? `${fullUrl}${organization.logo}`
       : organization?.logo || null;
 
     res.status(200).json({
@@ -36,6 +36,9 @@ export const getOrgSettings = async (req, res) => {
         ...(settings?.toObject() || { organizationId: orgId, ...DEFAULT_SETTINGS }),
         orgName: organization?.orgName || "Organization",
         logo: logoUrl,
+        // Always return policy fields with safe defaults for orgs that don't have them set yet
+        leaveQuotaPolicy: settings?.leaveQuotaPolicy ?? "quarterly_reset",
+        leaveQuotaIncrementStartMonth: settings?.leaveQuotaIncrementStartMonth ?? 4,
       },
     });
   } catch (error) {
@@ -73,6 +76,8 @@ export const updateOrgSettings = async (req, res) => {
       geofenceAddress,
       geofenceRadius,
       wfhEnabled,
+      leaveQuotaPolicy,
+      leaveQuotaIncrementStartMonth,
     } = req.body;
 
     const updateData = {};
@@ -92,14 +97,69 @@ export const updateOrgSettings = async (req, res) => {
     if (geofenceRadius !== undefined) updateData.geofenceRadius = geofenceRadius;
     if (wfhEnabled !== undefined) updateData.wfhEnabled = wfhEnabled;
 
+    // ── Leave Quota Policy ────────────────────────────────────────────────────
+    if (leaveQuotaPolicy !== undefined) {
+      if (!["quarterly_reset", "monthly_increment"].includes(leaveQuotaPolicy)) {
+        return res.status(400).json({ success: false, error: "Invalid leaveQuotaPolicy" });
+      }
+      updateData.leaveQuotaPolicy = leaveQuotaPolicy;
+    }
+    if (leaveQuotaIncrementStartMonth !== undefined) {
+      const m = Number(leaveQuotaIncrementStartMonth);
+      if (isNaN(m) || m < 1 || m > 12) {
+        return res.status(400).json({ success: false, error: "leaveQuotaIncrementStartMonth must be 1–12" });
+      }
+      updateData.leaveQuotaIncrementStartMonth = m;
+    }
+
+    // Fetch existing settings to check for policy changes
+    const existingSettings = await OrganizationSettings.findOne({ organizationId: orgId });
+    const isPolicyChangingToMonthly =
+      leaveQuotaPolicy === "monthly_increment" &&
+      (!existingSettings || existingSettings.leaveQuotaPolicy !== "monthly_increment");
+
+    // Save org settings
     const settings = await OrganizationSettings.findOneAndUpdate(
       { organizationId: orgId },
       { organizationId: orgId, ...updateData },
       { new: true, upsert: true, runValidators: true }
     );
 
+    // ── Immediately apply quota to THIS org's employees ──
+    // Only apply if the policy was just changed to Monthly, or if a reset was requested.
+    if (leaveQuotaPolicy !== undefined) {
+      const oId = new mongoose.Types.ObjectId(orgId);
+
+      if (leaveQuotaPolicy === "quarterly_reset") {
+        console.log(`[OrgSettings] Applying immediate Quarterly Reset for org ${orgId}`);
+        const result = await Employee.updateMany(
+          { organizationId: oId },
+          { $set: { leaveQuota: "3" } }
+        );
+        console.log(`[OrgSettings] Reset ${result.modifiedCount} employees to 3`);
+
+      } else if (leaveQuotaPolicy === "monthly_increment") {
+        const currentMonth = new Date().getMonth() + 1;
+        const startMonth = settings.leaveQuotaIncrementStartMonth || 4;
+        
+        // Calculate total months elapsed (1 leave per month)
+        // April(4) to May(5) = (5 - 4 + 1) = 2 leaves total
+        const totalQuota = Math.max(0, (currentMonth - startMonth) + 1).toString();
+
+        console.log(`[OrgSettings] Setting exact Monthly Quota for org ${orgId}. Policy: 1 per month from Month ${startMonth}. Today: Month ${currentMonth}. Total: ${totalQuota}`);
+
+        const result = await Employee.updateMany(
+          { organizationId: oId, status: "1" },
+          { $set: { leaveQuota: totalQuota } }
+        );
+        
+        console.log(`[OrgSettings] Successfully SET leaveQuota to ${totalQuota} for ${result.modifiedCount} employees.`);
+      }
+    }
+
     res.status(200).json({ success: true, data: settings });
   } catch (error) {
+    console.error("[OrgSettings Update Error]", error);
     res.status(500).json({ success: false, error: error.message });
   }
 };

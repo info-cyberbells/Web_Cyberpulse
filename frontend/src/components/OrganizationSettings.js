@@ -121,6 +121,8 @@ const Settings = () => {
     geofenceLongitude: null,
     geofenceAddress: "",
     geofenceRadius: 100,
+    leaveQuotaPolicy: "quarterly_reset",
+    leaveQuotaIncrementStartMonth: 4,
   });
   const [addressSearch, setAddressSearch] = useState("");
   const [geocodeLoading, setGeocodeLoading] = useState(false);
@@ -172,6 +174,8 @@ const Settings = () => {
             geofenceLongitude: response.data.geofenceLongitude ?? null,
             geofenceAddress: response.data.geofenceAddress ?? "",
             geofenceRadius: response.data.geofenceRadius ?? 100,
+            leaveQuotaPolicy: response.data.leaveQuotaPolicy ?? "quarterly_reset",
+            leaveQuotaIncrementStartMonth: response.data.leaveQuotaIncrementStartMonth ?? 4,
           });
         }
       } catch (error) {
@@ -664,6 +668,82 @@ const Settings = () => {
                   <Alert severity="info" sx={{ mt: 2 }}>
                     Employees can clock in from anywhere. Their GPS coordinates and the resolved address will be saved on each clock-in.
                   </Alert>
+                )}
+              </Box>
+
+              <Divider />
+
+              {/* Leave Quota Policy */}
+              <Box sx={{ mt: 3, mb: 3 }}>
+                <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1 }}>
+                  Leave Quota Policy
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Choose how leave quota should be managed for all employees in this organization.
+                </Typography>
+
+                <RadioGroup
+                  value={orgSettings.leaveQuotaPolicy}
+                  onChange={(e) =>
+                    setOrgSettings({ ...orgSettings, leaveQuotaPolicy: e.target.value })
+                  }
+                >
+                  <FormControlLabel
+                    value="quarterly_reset"
+                    control={<Radio />}
+                    label={
+                      <Box>
+                        <Typography variant="body2" fontWeight={500}>Quarterly Reset (Default)</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Resets all employees' leave quota to 3 on the 1st of Jan, Apr, Jul, and Oct.
+                        </Typography>
+                      </Box>
+                    }
+                  />
+                  <FormControlLabel
+                    value="monthly_increment"
+                    control={<Radio />}
+                    label={
+                      <Box>
+                        <Typography variant="body2" fontWeight={500}>Monthly Increment (+1 per month)</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Adds +1 to every employee's existing balance on the 1st of every month.
+                        </Typography>
+                      </Box>
+                    }
+                  />
+                </RadioGroup>
+
+                {orgSettings.leaveQuotaPolicy === "monthly_increment" && (
+                  <Box sx={{ mt: 2, pl: 4 }}>
+                    <Typography variant="body2" fontWeight={500} sx={{ mb: 1 }}>
+                      Start Increment From:
+                    </Typography>
+                    <TextField
+                      select
+                      size="small"
+                      value={orgSettings.leaveQuotaIncrementStartMonth}
+                      onChange={(e) =>
+                        setOrgSettings({
+                          ...orgSettings,
+                          leaveQuotaIncrementStartMonth: Number(e.target.value),
+                        })
+                      }
+                      SelectProps={{ native: true }}
+                      sx={{ width: 200, "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
+                    >
+                      {[
+                        [1, "January"], [2, "February"], [3, "March"], [4, "April"],
+                        [5, "May"], [6, "June"], [7, "July"], [8, "August"],
+                        [9, "September"], [10, "October"], [11, "November"], [12, "December"]
+                      ].map(([val, label]) => (
+                        <option key={val} value={val}>{label}</option>
+                      ))}
+                    </TextField>
+                    <Alert severity="info" sx={{ mt: 2 }}>
+                      Increment starts from the 1st of the selected month. If you save this now, it will also apply a +1 increment immediately to all active employees.
+                    </Alert>
+                  </Box>
                 )}
               </Box>
 
