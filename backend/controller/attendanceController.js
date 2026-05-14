@@ -14,31 +14,41 @@ import { decryptTime } from "../utils/timeEncryption.js";
 import { reverseGeocode } from "../utils/geocoding.js";
 
 // Helper function to format time for notifications
-const formatNotificationTime = (timestamp) => {
-  try {
-    if (!timestamp) return "";
+// const formatNotificationTime = (timestamp) => {
+//   try {
+//     if (!timestamp) return "";
     
-    // If it's already a simple time format (e.g., "09:58 AM" or "18:30"), return as-is
-    const simpleTimeRegex = /^(0?[1-9]|1[0-2]):[0-5][0-9]\s?(AM|PM)$/i;
-    const militaryTimeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/;
-    if (typeof timestamp === "string" && (simpleTimeRegex.test(timestamp) || militaryTimeRegex.test(timestamp))) {
-      return timestamp;
-    }
+//     let timeToFormat = timestamp;
 
-    const date = new Date(timestamp);
-    if (isNaN(date.getTime())) return timestamp;
+//     // 1. If it's an encrypted string, we need to decrypt it first
+//     if (typeof timestamp === "string" && timestamp.startsWith("enc:")) {
+//       try {
+//         timeToFormat = decryptTime(timestamp);
+//       } catch (e) {
+//         console.error("Failed to decrypt time for notification:", e);
+//       }
+//     }
 
-    // Convert ISO/UTC to IST
-    return date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-      timeZone: "Asia/Kolkata",
-    });
-  } catch {
-    return timestamp;
-  }
-};
+//     // 2. If it's already in "09:58 AM" format, it's already IST. Return as-is.
+//     const simpleTimeRegex = /^(0?[1-9]|1[0-2]):[0-5][0-9]\s?(AM|PM)$/i;
+//     if (typeof timeToFormat === "string" && simpleTimeRegex.test(timeToFormat)) {
+//       return timeToFormat;
+//     }
+
+//     // 3. For everything else (ISO strings, military time, numbers), convert to IST
+//     const date = new Date(timeToFormat);
+//     if (isNaN(date.getTime())) return timeToFormat;
+
+//     return date.toLocaleTimeString("en-US", {
+//       hour: "2-digit",
+//       minute: "2-digit",
+//       hour12: true,
+//       timeZone: "Asia/Kolkata",
+//     });
+//   } catch {
+//     return timestamp;
+//   }
+// };
 
 // Helper function to handle base64 images
 const handleBase64Image = async (base64Image, folder, employeeId) => {
@@ -256,11 +266,18 @@ export const addAttendance = async (req, res) => {
     // Send clock-in notification (fire & forget)
     const emp = await Employee.findById(employeeId).select("name organizationId");
     if (emp) {
+      // Always use server time converted to IST for notification accuracy
+      const serverTimeIST = new Date().toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+        timeZone: "Asia/Kolkata",
+      });
       createNotification("clock_in", {
         triggeredBy: employeeId,
         organizationId: emp.organizationId || organizationId,
         title: "Clock In",
-        message: `${emp.name} clocked in at ${formatNotificationTime(clockInTime)}`,
+        message: `${emp.name} clocked in at ${serverTimeIST}`,
         resourceId: newAttendance._id,
         resourceType: "attendance",
       });
@@ -1819,11 +1836,18 @@ export const updateAttendance = async (req, res) => {
     if (clockOutTime) {
       const emp = await Employee.findById(attendance.employeeId).select("name organizationId");
       if (emp) {
+        // Always use server time converted to IST for notification accuracy
+        const serverTimeIST = new Date().toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+          timeZone: "Asia/Kolkata",
+        });
         createNotification("clock_out", {
           triggeredBy: attendance.employeeId,
           organizationId: emp.organizationId,
           title: "Clock Out",
-          message: `${emp.name} clocked out at ${formatNotificationTime(clockOutTime)}`,
+          message: `${emp.name} clocked out at ${serverTimeIST}`,
           resourceId: savedAttendance._id,
           resourceType: "attendance",
         });
