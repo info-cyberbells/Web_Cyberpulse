@@ -1,5 +1,5 @@
-// import cron from 'node-cron';
-// console.log('✅ CRON Job Loaded Successfully!');
+import cron from 'node-cron';
+console.log('✅ CRON Job Loaded Successfully!');
 import Attendance from '../model/AttendanceModel.js';
 import Employee from '../model/employeeModel.js';
 import Task from '../model/TaskModel.js';
@@ -17,7 +17,7 @@ import { reverseGeocode } from "../utils/geocoding.js";
 // const formatNotificationTime = (timestamp) => {
 //   try {
 //     if (!timestamp) return "";
-    
+
 //     let timeToFormat = timestamp;
 
 //     // 1. If it's an encrypted string, we need to decrypt it first
@@ -342,294 +342,6 @@ export const getAttendanceAndTasksByEmployeeAndDate = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
-
-// export const getAllEmployeesAttendanceAndTasksByDate = async (req, res) => {
-//   try {
-//     const { date } = req.query;
-//     if (!date) {
-//       return res.status(400).json({ message: "Date is required" });
-//     }
-
-//     // Define date range for the current day
-//     const startOfDay = new Date(new Date(date).setHours(0, 0, 0));
-//     const endOfDay = new Date(new Date(date).setHours(23, 59, 59));
-
-//     const allEmployees = await Employee.find({
-//       status: { $ne: "0" },
-//       type: { $ne: 1 },
-//     }).select("name email position image gender department");
-
-
-//     // Check leave requests for the given date
-//     const leaveRequests = await LeaveRequest.find({
-//       startDate: { $lte: endOfDay },
-//       endDate: { $gte: startOfDay },
-//       status: { $in: ["Approved", "Pending", "Rejected"] },
-//     });
-
-//     // Create a map of leave requests for easy lookup
-//     const leaveRequestMap = new Map(
-//       leaveRequests.map((leave) => [leave.employeeId.toString(), leave])
-//     );
-
-//     // Get today's attendance records
-//     const todayAttendance = await Attendance.find({
-//       date,
-//     }).populate("employeeId", "name email position ");
-
-//     // Get the last attendance record for each employee (for last clock in/out)
-//     const lastAttendanceRecords = await Attendance.aggregate([
-//       {
-//         $sort: { date: -1, clockInTime: -1 },
-//       },
-//       {
-//         $group: {
-//           _id: "$employeeId",
-//           lastClockIn: { $first: "$clockInTime" },
-//           lastClockOut: { $first: "$clockOutTime" },
-//           lastClockInSelfie: { $first: "$clockInSelfie" },
-//           lastClockOutSelfie: { $first: "$clockOutSelfie" },
-//           lastClockInPlatform: { $first: "$platform" },
-//           autoClockOut: { $first: "$autoClockOut" },
-//         },
-//       },
-//     ]);
-
-//     // Fetch tasks for the current date
-//     const tasks = await Task.find({
-//       createdAt: {
-//         $gte: startOfDay,
-//         $lt: endOfDay,
-//       },
-//     }).select("employeeId title description status createdAt updatedAt");
-
-//     // Create a map of last attendance records for easier lookup
-//     const lastAttendanceMap = new Map(
-//       lastAttendanceRecords.map((record) => [record._id.toString(), record])
-//     );
-
-//     // Create a map of today's attendance for easier lookup
-//     const todayAttendanceMap = new Map(
-//       todayAttendance.map((record) => [record.employeeId._id.toString(), record])
-//     );
-
-//     // Group tasks by employee
-//     const tasksByEmployee = tasks.reduce((acc, task) => {
-//       const employeeId = task.employeeId.toString();
-//       if (!acc[employeeId]) {
-//         acc[employeeId] = [];
-//       }
-//       acc[employeeId].push({
-//         id: task._id,
-//         title: task.title,
-//         description: task.description,
-//         status: task.status,
-//         createdAt: task.createdAt,
-//         updatedAt: task.updatedAt,
-//       });
-//       return acc;
-//     }, {});
-
-//     // Combine all data
-//     const groupedData = allEmployees.map((employee) => {
-//       const employeeId = employee._id.toString();
-//       const lastAttendance = lastAttendanceMap.get(employeeId) || null;
-//       const todayAttendance = todayAttendanceMap.get(employeeId);
-//       const leaveRequest = leaveRequestMap.get(employeeId);
-
-//       return {
-//         employeeId: employee._id,
-//         employeeName: employee.name,
-//         email: employee.email,
-//         position: employee.position,
-//         department: employee.department,
-//         gender: employee.gender,
-//         image: employee.image || null,
-//         date,
-//         attendance: {
-//           todayClockIn: todayAttendance?.clockInTime || null,
-//           todayClockOut: todayAttendance?.clockOutTime || null,
-//           todayClockInPlatform: todayAttendance
-//             ? todayAttendance.platform || null
-//             : lastAttendance?.lastClockInPlatform || null,
-//           todayClockInSelfie: todayAttendance?.clockInSelfie || null,
-//           todayClockOutSelfie: todayAttendance?.clockOutSelfie || null,
-
-//           lastClockIn: lastAttendance?.lastClockIn || null,
-//           lastClockOut: lastAttendance?.lastClockOut || null,
-//           lastClockInSelfie: lastAttendance?.lastClockInSelfie || null,
-//           lastClockInPlatform: lastAttendance?.lastClockInPlatform || null,
-//           lastClockOutSelfie: lastAttendance?.lastClockOutSelfie || null,
-//           autoClockOut: lastAttendance?.autoClockOut || null,
-//         },
-//         leaveRequest: leaveRequest
-//           ? {
-//             leaveType: leaveRequest.leaveType,
-//             status: leaveRequest.status,
-//           }
-//           : null,
-//         tasks: tasksByEmployee[employeeId] || [],
-//       };
-//     });
-
-//     res.status(200).json(groupedData);
-//   } catch (error) {
-//     console.error("Error in getAllEmployeesAttendanceAndTasksByDate:", error);
-//     res.status(500).json({ error: error.message });
-//   }
-// };
-
-// export const getAllEmployeesAttendanceAndTasksByDate = async (req, res) => {
-//   try {
-//     const { date } = req.query;
-//     if (!date) {
-//       return res.status(400).json({ message: "Date is required" });
-//     }
-
-
-//     const protocol = req.protocol;
-//     const host = req.get('host');
-//     const baseUrl = `${protocol}://${host}`;
-
-
-//     const startOfDay = new Date(new Date(date).setHours(0, 0, 0));
-//     const endOfDay = new Date(new Date(date).setHours(23, 59, 59));
-
-//     const allEmployees = await Employee.find({
-//       status: { $ne: "0" },
-//       type: { $ne: 1 },
-//     }).select("name email position image gender department");
-
-
-//     const leaveRequests = await LeaveRequest.find({
-//       startDate: { $lte: endOfDay },
-//       endDate: { $gte: startOfDay },
-//       status: { $in: ["Approved", "Pending", "Rejected"] },
-//     });
-
-
-//     const leaveRequestMap = new Map(
-//       leaveRequests.map((leave) => [leave.employeeId.toString(), leave])
-//     );
-
-
-//     const todayAttendance = await Attendance.find({
-//       date,
-//     }).populate("employeeId", "name email position");
-
-
-//     const lastAttendanceRecords = await Attendance.aggregate([
-//       {
-//         $sort: { date: -1, clockInTime: -1 },
-//       },
-//       {
-//         $group: {
-//           _id: "$employeeId",
-//           lastClockIn: { $first: "$clockInTime" },
-//           lastClockOut: { $first: "$clockOutTime" },
-//           lastClockInSelfie: { $first: "$clockInSelfie" },
-//           lastClockOutSelfie: { $first: "$clockOutSelfie" },
-//           lastClockInPlatform: { $first: "$platform" },
-//           autoClockOut: { $first: "$autoClockOut" },
-//           Employeestatus: { $first: "$Employeestatus" },
-//         },
-//       },
-//     ]);
-
-
-//     const tasks = await Task.find({
-//       createdAt: {
-//         $gte: startOfDay,
-//         $lt: endOfDay,
-//       },
-//     }).select("employeeId title description status createdAt updatedAt");
-
-
-//     const lastAttendanceMap = new Map(
-//       lastAttendanceRecords.map((record) => [record._id.toString(), record])
-//     );
-
-
-//     const todayAttendanceMap = new Map(
-//       todayAttendance.map((record) => [record.employeeId._id.toString(), record])
-//     );
-
-
-//     const tasksByEmployee = tasks.reduce((acc, task) => {
-//       const employeeId = task.employeeId.toString();
-//       if (!acc[employeeId]) {
-//         acc[employeeId] = [];
-//       }
-//       acc[employeeId].push({
-//         id: task._id,
-//         title: task.title,
-//         description: task.description,
-//         status: task.status,
-//         createdAt: task.createdAt,
-//         updatedAt: task.updatedAt,
-//       });
-//       return acc;
-//     }, {});
-
-
-//     const groupedData = allEmployees.map((employee) => {
-//       const employeeId = employee._id.toString();
-//       const lastAttendance = lastAttendanceMap.get(employeeId) || null;
-//       const todayAttendance = todayAttendanceMap.get(employeeId);
-//       const leaveRequest = leaveRequestMap.get(employeeId);
-
-
-//       const processImageUrl = (imagePath) => {
-//         if (!imagePath) return null;
-//         if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-//           return imagePath;
-//         }
-//         return `${baseUrl}${imagePath}`;
-//       };
-
-//       return {
-//         employeeId: employee._id,
-//         employeeName: employee.name,
-//         email: employee.email,
-//         position: employee.position,
-//         department: employee.department,
-//         gender: employee.gender,
-//         image: processImageUrl(employee.image),
-//         date,
-//         attendance: {
-//           todayClockIn: todayAttendance?.clockInTime || null,
-//           todayClockOut: todayAttendance?.clockOutTime || null,
-//           todayClockInPlatform: todayAttendance
-//             ? todayAttendance.platform || null
-//             : lastAttendance?.lastClockInPlatform || null,
-//           todayClockInSelfie: processImageUrl(todayAttendance?.clockInSelfie),
-//           todayClockOutSelfie: processImageUrl(todayAttendance?.clockOutSelfie),
-//           lastClockIn: lastAttendance?.lastClockIn || null,
-//           lastClockOut: lastAttendance?.lastClockOut || null,
-//           lastClockInSelfie: processImageUrl(lastAttendance?.lastClockInSelfie),
-//           lastClockInPlatform: lastAttendance?.lastClockInPlatform || null,
-//           lastClockOutSelfie: processImageUrl(lastAttendance?.lastClockOutSelfie),
-//           autoClockOut: lastAttendance?.autoClockOut || null,
-//           EmployeeStatus: lastAttendance?.Employeestatus || null,
-//           breakTimings: todayAttendance?.breakTimings || [],
-//         },
-//         leaveRequest: leaveRequest
-//           ? {
-//             leaveType: leaveRequest.leaveType,
-//             status: leaveRequest.status,
-//           }
-//           : null,
-//         tasks: tasksByEmployee[employeeId] || [],
-//       };
-//     });
-
-//     res.status(200).json(groupedData);
-//   } catch (error) {
-//     console.error("Error in getAllEmployeesAttendanceAndTasksByDate:", error);
-//     res.status(500).json({ error: error.message });
-//   }
-// };
 
 
 export const getAllEmployeesAttendanceAndTasksByDate = async (req, res) => {
@@ -1004,175 +716,6 @@ export const getAttendanceAndTasksByEmployeeAndMonth = async (req, res) => {
 
 
 
-
-// export const getAttendanceAndTasksByEmployeeAndMonth = async (req, res) => {
-//   try {
-//       const { employeeId, date } = req.query;
-//       if (!employeeId || !date) {
-//           return res.status(400).json({ message: 'Employee ID and date are required' });
-//       }
-
-//       // Parse the input date
-//       const inputDate = new Date(date);
-
-//       // Calculate start and end of the month
-//       const startOfMonth = new Date(inputDate.getFullYear(), inputDate.getMonth(), 1);
-//       const endOfMonth = new Date(inputDate.getFullYear(), inputDate.getMonth() + 1, 0, 23, 59, 59);
-
-//       // Fetch all attendance for the current month
-//       const monthlyAttendance = await Attendance.find({
-//           employeeId,
-//           date: {
-//               $gte: startOfMonth,
-//               $lte: endOfMonth,
-//           }
-//       }).populate('employeeId', 'name').select('date clockInTime clockOutTime clockInSelfie clockOutSelfie');
-
-//       // Fetch all tasks for the current month
-//       const monthlyTasks = await Task.find({
-//           employeeId,
-//           createdAt: {
-//               $gte: startOfMonth,
-//               $lte: endOfMonth,
-//           }
-//       }).select('title description status createdAt updatedAt workSessions duration startTime completionTime pauseTime assignedDate');
-
-//       // Organize data by date
-//       const responseByDate = {};
-
-//       // Process attendance
-//       monthlyAttendance.forEach(record => {
-//           const recordDate = record.date.toISOString().split('T')[0]; // Get the date in YYYY-MM-DD format
-//           if (!responseByDate[recordDate]) {
-//               responseByDate[recordDate] = { attendance: null, tasks: [] };
-//           }
-//           responseByDate[recordDate].attendance = {
-//               clockInTime: record.clockInTime,
-//               clockOutTime: record.clockOutTime,
-//               clockInSelfie: record.clockInSelfie,
-//               clockOutSelfie: record.clockOutSelfie,
-//           };
-//       });
-
-//       // Process tasks
-//       monthlyTasks.forEach(task => {
-//           const taskDate = task.createdAt.toISOString().split('T')[0]; // Get the date in YYYY-MM-DD format
-//           if (!responseByDate[taskDate]) {
-//               responseByDate[taskDate] = { attendance: null, tasks: [] };
-//           }
-//           responseByDate[taskDate].tasks.push({
-//               id: task._id,
-//               title: task.title,
-//               description: task.description,
-//               status: task.status,
-//               createdAt: task.createdAt,
-//               updatedAt: task.updatedAt,
-//               workSessions: task.workSessions,
-//               duration: task.duration,
-//               startTime: task.startTime,
-//               completionTime: task.completionTime,
-//               pauseTime: task.pauseTime,
-//               assignedDate: task.assignedDate
-//           });
-//       });
-
-//       // Convert response object to an array of date-wise data
-//       const response = Object.entries(responseByDate).map(([date, data]) => ({
-//           date,
-//           ...data,
-//       }));
-
-//       // Send the response
-//       res.status(200).json({
-//           employeeId,
-//           employeeName: monthlyAttendance[0]?.employeeId?.name || null, // Assuming attendance has employee info
-//           month: inputDate.toLocaleString('default', { month: 'long', year: 'numeric' }), // e.g., December 2024
-//           data: response,
-//       });
-//   } catch (error) {
-//       res.status(500).json({ error: error.message });
-//   }
-// };
-
-
-
-
-// export const getAttendanceAndTasksByEmployeeAndMonth = async (req, res) => {
-//     try {
-//         const { employeeId, date } = req.query;
-//         if (!employeeId || !date) {
-//             return res.status(400).json({ message: 'Employee ID and date are required' });
-//         }
-//         // Parse the input date
-//         const inputDate = new Date(date);
-//         // Calculate start and end of the month
-//         const startOfMonth = new Date(inputDate.getFullYear(), inputDate.getMonth(), 1);
-//         const endOfMonth = new Date(inputDate.getFullYear(), inputDate.getMonth() + 1, 0, 23, 59, 59);
-//         // Fetch all attendance for the current month
-//         const monthlyAttendance = await Attendance.find({
-//             employeeId,
-//             date: {
-//                 $gte: startOfMonth,
-//                 $lte: endOfMonth,
-//             }
-//         }).populate('employeeId', 'name').select('date clockInTime clockOutTime clockInSelfie clockOutSelfie');
-//         // Fetch all tasks for the current month
-//         const monthlyTasks = await Task.find({
-//             employeeId,
-//             createdAt: {
-//                 $gte: startOfMonth,
-//                 $lte: endOfMonth,
-//             }
-//         }).select('title description status createdAt updatedAt');
-//         // Organize data by date
-//         const responseByDate = {};
-//         // Process attendance
-//         monthlyAttendance.forEach(record => {
-//             const recordDate = record.date.toISOString().split('T')[0]; // Get the date in YYYY-MM-DD format
-//             if (!responseByDate[recordDate]) {
-//                 responseByDate[recordDate] = { attendance: null, tasks: [] };
-//             }
-//             responseByDate[recordDate].attendance = {
-//                 clockInTime: record.clockInTime,
-//                 clockOutTime: record.clockOutTime,
-//                 clockInSelfie: record.clockInSelfie,
-//                 clockOutSelfie: record.clockOutSelfie,
-//             };
-//         });
-//         // Process tasks
-//         monthlyTasks.forEach(task => {
-//             const taskDate = task.createdAt.toISOString().split('T')[0]; // Get the date in YYYY-MM-DD format
-//             if (!responseByDate[taskDate]) {
-//                 responseByDate[taskDate] = { attendance: null, tasks: [] };
-//             }
-//             responseByDate[taskDate].tasks.push({
-//                 id: task._id,
-//                 title: task.title,
-//                 description: task.description,
-//                 status: task.status,
-//                 createdAt: task.createdAt,
-//                 updatedAt: task.updatedAt,
-//             });
-//         });
-
-//         // Convert response object to an array of date-wise data
-//         const response = Object.entries(responseByDate).map(([date, data]) => ({
-//             date,
-//             ...data,
-//         }));
-//         // Send the response
-//         res.status(200).json({
-//             employeeId,
-//             employeeName: monthlyAttendance[0]?.employeeId?.name || null, // Assuming attendance has employee info
-//             month: inputDate.toLocaleString('default', { month: 'long', year: 'numeric' }), // e.g., December 2024
-//             data: response,
-//         });
-//     } catch (error) {
-//         res.status(500).json({ error: error.message });
-//     }
-// };
-
-
 export const getMonthlySummary = async (req, res) => {
   try {
     const { employeeId, date } = req.query;
@@ -1535,83 +1078,6 @@ export const getAttendanceById = async (req, res) => {
 
 
 
-// export const updateAttendance = async (req, res) => {
-//   try {
-//     const {
-//       date,
-//       clockInTime,
-//       clockOutTime,
-//       clockInSelfie,
-//       clockOutSelfie,
-//       isEmergency,
-//       emergencyReason,
-//       breakTime,
-//       // otherBreakDescriptions,
-//       breakTimings,
-//       Employeestatus
-//     } = req.body;
-
-//     const attendance = await Attendance.findById(req.params.id);
-//     if (!attendance) {
-//       return res.status(404).json({ message: 'Attendance not found' });
-//     }
-
-//     const fullUrl = req.protocol + '://' + req.get('host');
-//     const employeeIdString = attendance._id.toString();
-
-//     // Handle Clock-In Selfie (base64 image)
-//     if (clockInSelfie && clockInSelfie !== attendance.clockInSelfie) {
-//       const result = await handleBase64Image(clockInSelfie, 'clockIn', employeeIdString);
-//       if (result.error) return res.status(400).json({ message: result.message });
-//       attendance.clockInSelfie = `${fullUrl}/${result.imagePath}`;
-//     }
-
-//     // Handle Clock-Out Selfie (base64 image)
-//     if (clockOutSelfie && clockOutSelfie !== attendance.clockOutSelfie) {
-//       const result = await handleBase64Image(clockOutSelfie, 'clockOut', employeeIdString);
-//       if (result.error) return res.status(400).json({ message: result.message });
-//       attendance.clockOutSelfie = `${fullUrl}/${result.imagePath}`;
-//     }
-
-//     // Apply fields if present
-//     if (date) attendance.date = date;
-//     if (clockInTime) attendance.clockInTime = clockInTime;
-//     if (clockOutTime) attendance.clockOutTime = clockOutTime;
-//     if (isEmergency !== undefined) attendance.isEmergency = isEmergency;
-//     if (emergencyReason !== undefined) attendance.emergencyReason = emergencyReason;
-//     if (breakTime !== undefined) attendance.breakTime = breakTime;
-//     // if (otherBreakDescriptions) attendance.otherBreakDescriptions = otherBreakDescriptions;
-//     if (breakTimings) attendance.breakTimings = breakTimings;
-//     if (Employeestatus) attendance.Employeestatus = Employeestatus;
-
-//     // Recalculate workingDay if both times available
-//     if (attendance.clockInTime && attendance.clockOutTime) {
-//       const clockIn = new Date(attendance.clockInTime);
-//       const clockOut = new Date(attendance.clockOutTime);
-//       if (!isNaN(clockIn) && !isNaN(clockOut)) {
-//         const hoursWorked = (clockOut - clockIn) / (1000 * 60 * 60);
-//         if (hoursWorked >= 8) attendance.workingDay = 1;
-//         else if (hoursWorked >= 5) attendance.workingDay = 0.75;
-//         else if (hoursWorked >= 3.5) attendance.workingDay = 0.5;
-//         else if (hoursWorked > 0) attendance.workingDay = 0.25;
-//         else attendance.workingDay = 0;
-//       }
-//     }
-
-//     await attendance.save();
-
-//     res.status(200).json({
-//       message: 'Attendance updated successfully',
-//       attendance
-//     });
-//   } catch (error) {
-//     console.error('Update attendance error:', error);
-//     res.status(500).json({ error: error.message });
-//   }
-// };
-
-
-
 export const updateAttendance = async (req, res) => {
   try {
     console.log('Update attendance request:', {
@@ -1799,7 +1265,7 @@ export const updateAttendance = async (req, res) => {
 
           // Fetch organization settings for required hours
           const emp = await Employee.findById(attendance.employeeId).select("organizationId");
-          const orgSettings = emp?.organizationId 
+          const orgSettings = emp?.organizationId
             ? await OrganizationSettings.findOne({ organizationId: emp.organizationId })
             : null;
           const requiredHours = orgSettings?.requiredHoursPerDay || 8;
@@ -1961,385 +1427,83 @@ export const getPreviousDayAutoClockOutEmployees = async (req, res) => {
 
 
 
-// ============================================================
-// AUTO CLOCK-OUT CRON — DISABLED (Client Requirement)
-// Reason: Causing issues for night shift employees.
-// Previously ran at 9:00 PM daily and force-clocked out all
-// employees who hadn't manually clocked out, setting their
-// clock-out time to 6:30 PM. Re-enable by uncommenting below.
-// ============================================================
 
-// cron.schedule('0 21 * * *', async () => {
-//   console.log('🕒 Running daily auto clock-out process at 9:00 PM...');
-//
-//   try {
-//     const today = new Date().toISOString().split('T')[0];
-//
-//     const unclockedEmployees = await Attendance.find({
-//       clockInTime: { $exists: true },
-//       clockOutTime: null,
-//       date: today,
-//     });
-//
-//     if (unclockedEmployees.length === 0) {
-//       console.log('No employees require auto clock-out today.');
-//       return;
-//     }
-//
-//     const fixedClockOutTime = `${today}T18:30:00`;
-//
-//     for (const attendance of unclockedEmployees) {
-//       // Pause all running tasks for this employee before clocking out
-//       const runningTasks = await Task.find({
-//         employeeId: attendance.employeeId,
-//         status: 'In Progress',
-//         isDeleted: false
-//       });
-//
-//       const clockOutTime = new Date(fixedClockOutTime);
-//       for (const task of runningTasks) {
-//         if (task.workSessions.length > 0) {
-//           const currentSession = task.workSessions[task.workSessions.length - 1];
-//           if (!currentSession.endTime) {
-//             currentSession.endTime = clockOutTime;
-//             currentSession.duration = Math.floor((clockOutTime - currentSession.startTime) / 1000);
-//             task.duration += currentSession.duration;
-//           }
-//         }
-//         task.status = 'Paused';
-//         task.pauseTime = clockOutTime;
-//         await task.save();
-//         console.log(`Auto-paused task ${task._id} for employee ${attendance.employeeId}`);
-//       }
-//
-//       attendance.clockOutTime = fixedClockOutTime;
-//       attendance.isEmergency = true;
-//       attendance.emergencyReason = 'Auto Clock-Out due to no manual clock-out';
-//       attendance.autoClockOut = true;
-//       attendance.Employeestatus = 'clocked out';
-//
-//       if (!attendance.workingDay || attendance.workingDay === 0) {
-//         attendance.workingDay = 1;
-//       }
-//
-//       await attendance.save();
-//
-//       console.log(`Auto clocked out employee: ${attendance.employeeId} at ${attendance.clockOutTime}`);
-//     }
-//
-//     console.log(' Auto clock-out process completed successfully!');
-//   } catch (error) {
-//     console.error('Error during auto clock-out:', error.message);
-//   }
-// });
+//AUTO CLOCK-OUT CRON 
+cron.schedule('0 21 * * *', async () => {
+  console.log('🕒 Running daily auto clock-out process at 9:00 PM...');
 
+  try {
+    const today = new Date().toISOString().split('T')[0];
 
+    //only for your specific org
+    const TARGET_ORG_ID = '686e0094275619eb4b6bddab';
 
+    const orgEmployeeIds = await Employee.find(
+      { organizationId: TARGET_ORG_ID },
+      '_id'
+    );
+    const empIds = orgEmployeeIds.map(e => e._id);
 
-// export const getMonthlyAttendance = async (req, res) => {
-//   try {
-//     const today = new Date();
-//     let year = parseInt(req.query.year);
-//     let month = parseInt(req.query.month);
-//     const period = req.query.period;
+    const unclockedEmployees = await Attendance.find({
+      clockInTime: { $exists: true },
+      clockOutTime: null,
+      date: today,
+      employeeId: { $in: empIds },
+    });
 
-//     if (isNaN(year)) year = today.getFullYear();
-//     if (isNaN(month) || month < 0 || month > 11) month = today.getMonth();
+    if (unclockedEmployees.length === 0) {
+      console.log('No employees require auto clock-out today.');
+      return;
+    }
 
-//     if (period === "last") {
-//       if (month === 0) {
-//         month = 11;
-//         year -= 1;
-//       } else {
-//         month -= 1;
-//       }
-//     }
+    const fixedClockOutTime = `${today}T18:30:00`;
 
-//     const startDate = new Date(Date.UTC(year, month, 1));
-//     const endDate =
-//       year === today.getFullYear() &&
-//       month === today.getMonth() &&
-//       period !== "last"
-//         ? new Date(today)
-//         : new Date(Date.UTC(year, month + 1, 0, 23, 59, 59, 999));
+    for (const attendance of unclockedEmployees) {
+      // Pause all running tasks for this employee before clocking out
+      const runningTasks = await Task.find({
+        employeeId: attendance.employeeId,
+        status: 'In Progress',
+        isDeleted: false
+      });
 
-//     const allEmployees = await Employee.find({ type: { $ne: 1 } });
-//     const allAttendance = await Attendance.find({
-//       date: { $gte: startDate, $lte: endDate },
-//     });
-//     const allLeaves = await LeaveRequest.find({
-//       status: "Approved",
-//       $or: [
-//         { startDate: { $lte: endDate }, endDate: { $gte: startDate } },
-//         { appliedDate: { $gte: startDate, $lte: endDate } },
-//       ],
-//     });
+      const clockOutTime = new Date(fixedClockOutTime);
+      for (const task of runningTasks) {
+        if (task.workSessions.length > 0) {
+          const currentSession = task.workSessions[task.workSessions.length - 1];
+          if (!currentSession.endTime) {
+            currentSession.endTime = clockOutTime;
+            currentSession.duration = Math.floor((clockOutTime - currentSession.startTime) / 1000);
+            task.duration += currentSession.duration;
+          }
+        }
+        task.status = 'Paused';
+        task.pauseTime = clockOutTime;
+        await task.save();
+        console.log(`Auto-paused task ${task._id} for employee ${attendance.employeeId}`);
+      }
 
-//     const dates = [];
-//     let current = new Date(startDate);
-//     while (current <= endDate) {
-//       const dateObj = new Date(current);
-//       dates.push({
-//         date: dateObj.toISOString().split("T")[0],
-//         day: dateObj.toLocaleDateString("en-US", { weekday: "long" }),
-//         isWeekend: dateObj.getUTCDay() === 0 || dateObj.getUTCDay() === 6,
-//       });
-//       current.setUTCDate(current.getUTCDate() + 1);
-//     }
+      attendance.clockOutTime = fixedClockOutTime;
+      attendance.isEmergency = true;
+      attendance.emergencyReason = 'Auto Clock-Out due to no manual clock-out';
+      attendance.autoClockOut = true;
+      attendance.Employeestatus = 'clocked out';
 
-//     const result = allEmployees.map((employee) => {
-//       let daysPresent = 0;
-//       let leavesTaken = 0;
+      if (!attendance.workingDay || attendance.workingDay === 0) {
+        attendance.workingDay = 1;
+      }
 
-//       const employeeLeaves = allLeaves.filter(
-//         (l) => l.employeeId.toString() === employee._id.toString()
-//       );
+      await attendance.save();
 
-//       const leaveDates = new Set();
-//       employeeLeaves.forEach((leave) => {
-//         const start = new Date(leave.startDate);
-//         const end = new Date(leave.endDate);
-//         let day = new Date(start);
-//         while (day <= end) {
-//           const dayStr = day.toISOString().split("T")[0];
-//           if (new Date(dayStr) >= startDate && new Date(dayStr) <= endDate) {
-//             leaveDates.add(dayStr);
-//           }
-//           day.setDate(day.getDate() + 1);
-//         }
-//         const appliedStr = new Date(leave.appliedDate).toISOString().split("T")[0];
-//         if (new Date(appliedStr) >= startDate && new Date(appliedStr) <= endDate) {
-//           leaveDates.add(appliedStr);
-//         }
-//       });
+      console.log(`Auto clocked out employee: ${attendance.employeeId} at ${attendance.clockOutTime}`);
+    }
 
-//       const attendanceByDate = dates.map(({ date, day, isWeekend }) => {
-//         let status = "Absent";
-//         let leaveApplied = leaveDates.has(date);
-
-//         if (isWeekend) {
-//           return { date, day, status: "Weekend", leaveApplied };
-//         }
-
-//         const attendanceRecord = allAttendance.find(
-//           (att) =>
-//             att.employeeId.toString() === employee._id.toString() &&
-//             new Date(att.date).toISOString().split("T")[0] === date
-//         );
-
-//         if (attendanceRecord && attendanceRecord.workingDay) {
-//           const work = attendanceRecord.workingDay;
-//           if (work === 1) {
-//             daysPresent += 1;
-//             status = "Present";
-//           } else if (work === 0.5) {
-//             daysPresent += 0.5;
-//             status = "Half Day";
-//           }
-//         } else if (leaveApplied) {
-//           status = "On Leave";
-//         }
-
-//         return { date, day, status, leaveApplied };
-//       });
-
-//       leavesTaken = [...leaveDates].length;
-
-//       const totalWorkingDays = dates.filter((d) => !d.isWeekend).length;
-//       const daysAbsent = totalWorkingDays - daysPresent - leavesTaken;
-
-//       return {
-//         employeeId: employee._id,
-//         name: employee.name,
-//         email: employee.email,
-//         daysPresent: parseFloat(daysPresent.toFixed(1)),
-//         leavesTaken,
-//         daysAbsent: parseFloat(daysAbsent.toFixed(1)),
-//         attendance: attendanceByDate,
-//       };
-//     });
-
-//     res.status(200).json(result);
-//   } catch (error) {
-//     console.error("Error generating monthly attendance:", error);
-//     res.status(500).json({ message: "Server error" });
-//   }
-// };
+    console.log(' Auto clock-out process completed successfully!');
+  } catch (error) {
+    console.error('Error during auto clock-out:', error.message);
+  }
+});
 
 
-
-// export const getMonthlyAttendance = async (req, res) => {
-//   try {
-//     const today = new Date();
-//     today.setHours(23, 59, 59, 999);
-
-//     let year = parseInt(req.query.year);
-//     let month = parseInt(req.query.month);
-//     const period = req.query.period;
-
-//     if (isNaN(year)) year = today.getFullYear();
-//     if (isNaN(month) || month < 0 || month > 11) month = today.getMonth();
-
-//     if (period === "last") {
-//       if (month === 0) {
-//         month = 11;
-//         year -= 1;
-//       } else {
-//         month -= 1;
-//       }
-//     }
-
-//     const startDate = new Date(Date.UTC(year, month, 1));
-//     const endDate = new Date(today);
-//     if (period === "last" || (year !== today.getFullYear() || month !== today.getMonth())) {
-//       endDate.setFullYear(year, month + 1, 0);
-//       endDate.setHours(23, 59, 59, 999);
-//     }
-
-//     const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
-
-//     // Fetch holidays for this month
-//     const holidaysInMonth = await Holiday.find({
-//       date: {
-//         $gte: new Date(Date.UTC(year, month, 1)),
-//         $lte: new Date(Date.UTC(year, month + 1, 0)),
-//       },
-//     });
-
-//     const numberOfHolidays = holidaysInMonth.length;
-
-//     // Assuming 8 weekends
-//     const assumedWeekendDays = 8;
-//     const totalWorkingDays = totalDaysInMonth - assumedWeekendDays - numberOfHolidays;
-
-//     // Get the base URL dynamically from the request
-//     const protocol = req.protocol; // http or https
-//     const host = req.get('host'); // gets the host from headers
-//     const baseUrl = `${protocol}://${host}`;
-
-//     // Function to process image URLs
-//     const processImageUrl = (imagePath) => {
-//       if (!imagePath) return null;
-//       if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-//         return imagePath;
-//       }
-//       return `${baseUrl}${imagePath}`;
-//     };
-
-//     const allEmployees = await Employee.find({ type: { $ne: 1 }, status: { $ne: 0 } });
-//     const allAttendance = await Attendance.find({ date: { $gte: startDate, $lte: endDate } });
-//     const allLeaves = await LeaveRequest.find({
-//       status: "Approved",
-//       $or: [
-//         { startDate: { $lte: endDate }, endDate: { $gte: startDate } }
-//       ]
-//     });
-
-//     const dates = [];
-//     let current = new Date(startDate);
-//     while (current <= endDate) {
-//       const copy = new Date(current);
-//       dates.push({
-//         date: copy.toISOString().split("T")[0],
-//         day: copy.toLocaleDateString("en-US", { weekday: "long" }),
-//         isWeekend: copy.getUTCDay() === 0 || copy.getUTCDay() === 6,
-//         isPastOrToday: copy <= today,
-//       });
-//       current.setUTCDate(current.getUTCDate() + 1);
-//     }
-
-//     const result = allEmployees.map((employee) => {
-//       let daysPresent = 0;
-//       let leavesTaken = 0;
-//       let daysAbsent = 0;
-
-//       const employeeLeaves = allLeaves.filter(
-//         l => l.employeeId.toString() === employee._id.toString()
-//       );
-
-//       const leaveDates = new Set();
-//       employeeLeaves.forEach(leave => {
-//         const start = new Date(leave.startDate);
-//         const end = new Date(leave.endDate);
-//         let day = new Date(start);
-//         while (day <= end) {
-//           const dayStr = day.toISOString().split("T")[0];
-//           if (day >= startDate && day <= endDate) {
-//             leaveDates.add(dayStr);
-//           }
-//           day.setDate(day.getDate() + 1);
-//         }
-//       });
-
-//       const attendanceByDate = dates.map(({ date, day, isWeekend, isPastOrToday }) => {
-//         const isLeaveApplied = leaveDates.has(date);
-//         if (isWeekend) {
-//           return { date, day, status: "Weekend", leaveApplied: isLeaveApplied };
-//         }
-
-//         const attendanceRecord = allAttendance.find(
-//           att =>
-//             att.employeeId.toString() === employee._id.toString() &&
-//             new Date(att.date).toISOString().split("T")[0] === date
-//         );
-
-//         const workingDay = attendanceRecord?.workingDay || 0;
-
-//         let status = "Absent";
-//         let presence = 0;
-
-//         if (workingDay === 1) {
-//           status = "Present";
-//           presence = 1;
-//         } else if (workingDay === 0.5) {
-//           status = "Half Day";
-//           presence = 0.5;
-//         } else if (isLeaveApplied) {
-//           status = "On Leave";
-//           if (isPastOrToday) {
-//             leavesTaken += 1;
-//           }
-//         } else if (isPastOrToday) {
-//           daysAbsent += 1;
-//         }
-
-//         if (isPastOrToday) {
-//           daysPresent += presence;
-//         }
-
-//         return {
-//           date,
-//           day,
-//           status,
-//           leaveApplied: isLeaveApplied,
-//         };
-//       });
-
-//       return {
-//         employeeId: employee._id,
-//         name: employee.name,
-//         email: employee.email,
-//         daysPresent: parseFloat(daysPresent.toFixed(1)),
-//         leavesTaken,
-//         daysAbsent,
-//         attendance: attendanceByDate,
-//         image: processImageUrl(employee.image), // Added base URL processing here
-//       };
-//     });
-
-//     return res.status(200).json({
-//       month: `${year}-${(month + 1).toString().padStart(2, "0")}`,
-//       totalDaysInMonth,
-//       assumedWeekendDays,
-//       numberOfHolidays,
-//       totalWorkingDays,
-//       employees: result,
-//     });
-//   } catch (error) {
-//     console.error("Error generating monthly attendance:", error);
-//     res.status(500).json({ message: "Server error" });
-//   }
-// };
 
 export const getMonthlyAttendance = async (req, res) => {
   try {
@@ -2814,123 +1978,3 @@ export const calculateMonthlySalaries = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
-// console.log("⏳ Attendance Cron Started");
-
-// // Dates missing attendance
-// const missingDates = [
-//   "2025-10-02",
-//   "2025-10-03",
-//   "2025-10-20",
-//   "2025-10-21",
-//   "2025-10-27"
-// ];
-
-// // Template copied from your sample attendance
-// const generateAttendanceData = (emp, dateStr) => ({
-//   employeeId: emp._id,
-//   date: new Date(dateStr),
-//   clockInTime: `${dateStr}T09:30:25.398`,
-//   clockOutTime: `${dateStr}T18:32:21.561`,
-//   clockInSelfie: null,
-//   platform: "Web",
-//   clockOutSelfie: null,
-//   autoClockOut: false,
-//   workingDay: 1,
-//   breakTime: 30,
-//   organizationId: emp.organizationId,     // 🔥 ALWAYS UPDATED
-//   activeTaskIdBeforeBreak: null,
-//   Employeestatus: "clocked out",
-//   breakTimings: [
-//     {
-//       name: "Lunch Break",
-//       startTime: `${dateStr}T13:49:16.688`,
-//       endTime: `${dateStr}T14:19:28.309`,
-//     }
-//   ],
-//   isEmergency: false
-// });
-
-// // Run every minute
-// cron.schedule("* * * * *", async () => {
-//   console.log("🔁 Checking and fixing missing attendance...");
-
-//   try {
-//     const employees = await Employee.find({}, "_id organizationId");
-
-//     for (const emp of employees) {
-//       for (const dateStr of missingDates) {
-//         const dateObj = new Date(dateStr);
-
-//         const record = await Attendance.findOne({
-//           employeeId: emp._id,
-//           date: dateObj
-//         });
-
-//         const fullData = generateAttendanceData(emp, dateStr);
-
-//         if (!record) {
-//           // CREATE new full record
-//           console.log(`➕ Creating new attendance for ${emp._id} on ${dateStr}`);
-//           await Attendance.create(fullData);
-//         } else {
-//           // UPDATE existing record (only orgId or missing fields)
-//           console.log(`♻ Updating existing attendance for ${emp._id} on ${dateStr}`);
-//           await Attendance.updateOne(
-//             { _id: record._id },
-//             { $set: fullData }
-//           );
-//         }
-//       }
-//     }
-
-//     console.log("✔ Attendance fixing completed");
-
-//   } catch (err) {
-//     console.error("❌ Cron error:", err.message);
-//   }
-// });
-
-
-// let hasRun = false; // run once only (runtime)
-
-// cron.schedule("* * * * *", async () => {
-//   if (hasRun) return;
-
-//   try {
-//     console.log("Running attendance UPDATE cron");
-
-//     const targetDate = new Date("2026-01-02T00:00:00.000Z");
-
-//     // Get active employees
-//     const employees = await Employee.find({ status: "1" }).select("_id");
-//     const employeeIds = employees.map(e => e._id);
-
-//     if (!employeeIds.length) {
-//       hasRun = true;
-//       return;
-//     }
-
-//     // 🔥 UPDATE EXISTING RECORDS ONLY
-//     const result = await Attendance.updateMany(
-//       {
-//         employeeId: { $in: employeeIds },
-//         date: targetDate
-//       },
-//       {
-//         $set: {
-//           clockInTime: "2026-01-02T09:30:00.000",
-//           clockOutTime: "2026-01-02T18:30:00.000",
-//           workingDay: 1,
-//           Employeestatus: "clocked out"
-//         }
-//       }
-//     );
-
-//     console.log(`Attendance updated: ${result.modifiedCount}`);
-
-//     hasRun = true; // ✅ ensure one-time execution
-//   } catch (error) {
-//     console.error("Attendance update cron error:", error);
-//   }
-// });
