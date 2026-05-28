@@ -795,6 +795,26 @@ export const getMonthlyAttendance = async (year, month) => {
 };
 
 
+//get Weekly Attendance
+export const getWeeklyAttendance = async (week) => {
+  try {
+    const organizationId = getOrganizationId();
+    const department = getUserDepartment();
+
+    const response = await apiClient.get(API_ROUTES.WEEKLY_ATTENDANCE, {
+      params: {
+        week,
+        ...(organizationId && { organizationId }),
+        ...(department && { department }),
+      },
+    });
+
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 
 //add task
 export const addTask = async (taskData) => {

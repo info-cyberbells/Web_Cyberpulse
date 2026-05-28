@@ -1,5 +1,5 @@
 import express from 'express';
-import { addAttendance, fetchAllAttendance, getMonthlyAttendance, calculateMonthlySalaries,  getMonthlySummary,getPreviousDayAutoClockOutEmployees, fetchAllAttendanceByDate, getAttendanceAndTasksByEmployeeAndDate, getAttendanceAndTasksByEmployeeAndMonth, getAttendanceById, updateAttendance, deleteAttendance, getAllEmployeesAttendanceAndTasksByDate, fetchClockDataMonthly } from '../controller/attendanceController.js';
+import { addAttendance, fetchAllAttendance, getMonthlyAttendance, calculateMonthlySalaries,  getMonthlySummary,getPreviousDayAutoClockOutEmployees, fetchAllAttendanceByDate, getAttendanceAndTasksByEmployeeAndDate, getAttendanceAndTasksByEmployeeAndMonth, getAttendanceById, updateAttendance, deleteAttendance, getAllEmployeesAttendanceAndTasksByDate, fetchClockDataMonthly, getWeeklyAttendance } from '../controller/attendanceController.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
 console.log('Inside project route');
 const routerAttendance = express.Router();
@@ -18,6 +18,7 @@ routerAttendance.get("/previousDayAutoClockout", getPreviousDayAutoClockOutEmplo
 routerAttendance.get("/fetchMonthlyClockData", fetchClockDataMonthly);
 
 routerAttendance.get("/monthlyAttendence", getMonthlyAttendance);
+routerAttendance.get('/weeklyAttendance', getWeeklyAttendance);
 
 routerAttendance.post('/salaryCalculate', calculateMonthlySalaries);
 

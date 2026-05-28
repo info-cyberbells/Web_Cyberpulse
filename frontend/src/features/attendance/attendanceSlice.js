@@ -11,6 +11,7 @@ import {
   getCurrentEmpAttendance,
   getPreviousDayAutoClockout,
   getMonthlyAttendance,
+  getWeeklyAttendance,
 } from "../../services/services";
 
 // Async Thunks
@@ -153,6 +154,19 @@ export const fetchMonthlyAttendanceAsync = createAsyncThunk(
   }
 );
 
+// fetch weekly attendance async
+export const fetchWeeklyAttendanceAsync = createAsyncThunk(
+  "attendance/fetchWeeklyAttendance",
+  async ({ week }, { rejectWithValue }) => {
+    try {
+      const response = await getWeeklyAttendance(week);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 export const getAttendance = createAsyncThunk(
   "attendance/getAttendance",
   async ({ id, date }, { rejectWithValue }) => {
@@ -183,16 +197,20 @@ const initialState = {
   currentDayAttendance: [],
   attendanceHistory: [],
   monthlyAttendanceData: [],
+  weeklyAttendanceData: [],
   autoClockOutEmployees: [],
   totalWorkingDays: 0,
+  totalWeekWorkingDays: 0,
   currentAttendance: null,
   selectedAttendance: null,
   monthlyLoading: false,
+  weeklyLoading: false,
   loading: false,
   autoClockOutLoading: false,
   error: null,
   successMessage: null,
   monthlyError: null,
+  weeklyError: null,
   stats: {
     totalHours: 0,
     averageHoursPerDay: 0,
@@ -318,6 +336,23 @@ const attendanceSlice = createSlice({
         state.monthlyError = action.payload;
         state.monthlyAttendanceData = [];
         state.totalWorkingDays = 0;
+      })
+
+      // get weekly attendance
+      .addCase(fetchWeeklyAttendanceAsync.pending, (state) => {
+        state.weeklyLoading = true;
+        state.weeklyError = null;
+      })
+      .addCase(fetchWeeklyAttendanceAsync.fulfilled, (state, action) => {
+        state.weeklyLoading = false;
+        state.weeklyAttendanceData = action.payload.employees || [];
+        state.totalWeekWorkingDays = action.payload.totalWorkingDays || 0;
+      })
+      .addCase(fetchWeeklyAttendanceAsync.rejected, (state, action) => {
+        state.weeklyLoading = false;
+        state.weeklyError = action.payload;
+        state.weeklyAttendanceData = [];
+        state.totalWeekWorkingDays = 0;
       })
 
       // Clock In

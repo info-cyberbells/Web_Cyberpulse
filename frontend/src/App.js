@@ -71,6 +71,7 @@ import ProjectDetailView from "./components/ProjectDetailView";
 import { getAttendance } from "./features/attendance/attendanceSlice";
 import { fetchConversations } from "./features/chat/chatSlice";
 import { initFCM, cleanupFCM } from "./services/fcmService";
+import WeeklyData from './components/WeeklyEmployeeData/WeeklyEmployeesData';
 
 
 
@@ -158,6 +159,7 @@ function AppContent() {
       <Route path="/holidays" element={<Holidays />} />
       <Route path="/help-desk" element={<HelpDesk />} />
       <Route path="/monthly-data" element={<Monthlydata />} />
+      <Route path="/weekly-data" element={<WeeklyData />} />
       <Route path="/get-all-requests" element={<AdminAdvanceSalary />} />
       <Route path="/salary-calculator" element={<SalaryCalculator />} />
       <Route path="/add-employee/:employeeId" element={<EmployeeDetails />} />
@@ -303,6 +305,8 @@ function AppContent() {
             <Route path="/add-employee/:employeeId" element={<EmployeeDetails />} />
             <Route path="/chat" element={<ChatContainer />} />
             <Route path="/wfh-credits" element={<WfhCreditsPage />} />
+            <Route path="/weekly-data" element={<WeeklyData />} />
+
 
             <Route path="/notifications" element={<NotificationPage />} />
             <Route path="/settings" element={<Settings />} />
@@ -344,6 +348,7 @@ function AppContent() {
             <Route path="/add-file" element={<AdminSide />} />
             <Route path="/chat" element={<ChatContainer />} />
             <Route path="/wfh-credits" element={<WfhCreditsPage />} />
+            <Route path="/weekly-data" element={<WeeklyData />} />
 
             <Route path="/notifications" element={<NotificationPage />} />
             <Route path="/settings" element={<Settings />} />
@@ -381,6 +386,7 @@ function AppContent() {
             <Route path="/holidays" element={<Holidays />} />
             <Route path="/help-desk" element={<HelpDesk />} />
             <Route path="/monthly-data" element={<Monthlydata />} />
+            <Route path="/weekly-data" element={<WeeklyData />} />
             <Route path="/get-all-requests" element={<AdminAdvanceSalary />} />
             <Route path="/add-employee/:employeeId" element={<EmployeeDetails />} />
             <Route path="/add-file" element={<AdminSide />} />
