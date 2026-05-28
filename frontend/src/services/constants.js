@@ -52,6 +52,7 @@ export const API_ROUTES = {
   CURRENT_EMP_LOGIN: "/attendance/currentEmpAttendance",
   PREVIOUS_DAY_AUTO_CLOCKOUT: '/attendance/previousDayAutoClockout',
   MONTHLY_ATTENDANCE: "/attendance/monthlyAttendence",
+  WEEKLY_ATTENDANCE: "/attendance/weeklyAttendance",
 
   ADD_TASK: "/task/add",
   DELETE_TASK: "/task/delete",

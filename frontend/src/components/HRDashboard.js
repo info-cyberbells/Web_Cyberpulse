@@ -232,9 +232,11 @@ const HRDashboard = () => {
   const initial = (name) => (name || "E")[0].toUpperCase();
 
   // ── Attendance employee pill (avatar + name side by side) ────────────────
-  const EmpChip = ({ emp, color }) => {
+  const EmpChip = ({ emp, color, showTime }) => {
     const name = emp.employeeName || emp.name || "Employee";
     const imgSrc = emp.image || null;
+    const todayClockIn = emp.attendance?.todayClockIn || "-";
+    // console.log(todayClockIn);
     return (
       <Tooltip title={name} arrow placement="top">
         <Box
@@ -278,6 +280,11 @@ const HRDashboard = () => {
           >
             {name}
           </Typography>
+           {showTime && todayClockIn !== "-" && (
+            <Typography variant="caption" sx={{ fontSize: "0.68rem", color: "#666", whiteSpace: "nowrap" }}>
+              {new Date(todayClockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </Typography>
+          )}
         </Box>
       </Tooltip>
     );
@@ -475,8 +482,8 @@ const HRDashboard = () => {
                         No employee clocked-in yet
                       </Typography>
                     ) : (
-                      clockedIn.slice(0, 12).map((emp) => (
-                        <EmpChip key={emp.employeeId} emp={emp} color="#2196f3" />
+                      clockedIn.slice(0, 25).map((emp) => (
+                        <EmpChip key={emp.employeeId} emp={emp} color="#2196f3" showTime/>
                       ))
                     )}
                   </AttendanceRow>

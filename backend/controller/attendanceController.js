@@ -1978,3 +1978,259 @@ export const calculateMonthlySalaries = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+
+export const getWeeklyAttendance = async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+
+    const { week, organizationId, department } = req.query;
+
+    if (!organizationId) {
+      return res.status(400).json({ message: "organizationId is required" });
+    }
+
+    // ── Calculate week start (Monday) ──
+    let weekStart = new Date();
+    const dayOfWeek = weekStart.getDay();
+    const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    weekStart.setDate(weekStart.getDate() + diffToMonday);
+    weekStart.setHours(0, 0, 0, 0);
+
+    if (week === "last") {
+      weekStart.setDate(weekStart.getDate() - 7);
+    } else if (week && week !== "current") {
+      const parsed = new Date(week);
+      if (!isNaN(parsed)) {
+        weekStart = parsed;
+        weekStart.setHours(0, 0, 0, 0);
+      }
+    }
+
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
+
+    // ── Holidays in this week ──
+    const holidaysInWeek = await Holiday.find({
+      organizationId,
+      date: { $gte: weekStart, $lte: weekEnd },
+    });
+    const numberOfHolidays = holidaysInWeek.length;
+
+    const holidayDatesSet = new Set();
+    holidaysInWeek.forEach((h) => {
+      const d = new Date(h.date);
+      const localStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      holidayDatesSet.add(localStr);
+    });
+
+    // ── Image URL helper ──
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const processImageUrl = (imagePath) => {
+      if (!imagePath) return null;
+      if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) return imagePath;
+      return `${baseUrl}${imagePath}`;
+    };
+
+    // ── Employees ──
+    const employeeFilter = {
+      organizationId,
+      type: { $ne: 1 },
+      status: { $ne: 0 },
+    };
+    if (department) {
+      const existsType3 = await Employee.exists({ department, type: 3 });
+      if (existsType3) employeeFilter.department = department;
+    }
+    const allEmployees = await Employee.find(employeeFilter);
+
+    // ── Attendance records ──
+    const allAttendance = await Attendance.find({
+      organizationId,
+      date: { $gte: weekStart, $lte: weekEnd },
+    });
+
+    // ── Required working hours from org settings ──
+    let requiredHoursPerDay = 8;
+    const orgSettings = await OrganizationSettings.findOne({ organizationId });
+    if (orgSettings?.workingHoursRequired) {
+      requiredHoursPerDay = orgSettings.workingHoursRequired;
+    }
+
+    // ── Leave requests overlapping this week ──
+    const allLeaves = await LeaveRequest.find({
+      organizationId,
+      status: { $in: ["Approved", "approved", "Pending", "pending"] },
+      $or: [{ startDate: { $lte: weekEnd }, endDate: { $gte: weekStart } }],
+    });
+
+    // ── Build 7-day dates array using LOCAL date ──
+    const dates = [];
+    let current = new Date(weekStart);
+    while (current <= weekEnd) {
+      const copy = new Date(current);
+
+      // ✅ Use local date string to avoid UTC shift in IST
+      const localDateStr = `${copy.getFullYear()}-${String(copy.getMonth() + 1).padStart(2, "0")}-${String(copy.getDate()).padStart(2, "0")}`;
+
+      dates.push({
+        date: localDateStr,
+        day: copy.toLocaleDateString("en-US", { weekday: "long" }),
+        isWeekend: copy.getDay() === 0 || copy.getDay() === 6,  // ✅ getDay() not getUTCDay()
+        isHoliday: holidayDatesSet.has(localDateStr),
+        isPastOrToday: copy <= today,
+      });
+
+      current.setDate(current.getDate() + 1); // ✅ setDate() not setUTCDate()
+    }
+
+    const weekendDays = dates.filter((d) => d.isWeekend).length;
+    const totalWorkingDays = 7 - weekendDays - numberOfHolidays;
+
+    // ── Clock time parser ──
+    const parseClockTime = (dateStr, timeStr) => {
+      if (!timeStr) return null;
+      try {
+        if (timeStr.includes("T")) return new Date(timeStr);
+        const parts = timeStr.split(":");
+        const d = new Date(dateStr);
+        d.setHours(parseInt(parts[0]) || 0, parseInt(parts[1]) || 0, parseInt(parts[2]) || 0, 0);
+        return d;
+      } catch {
+        return null;
+      }
+    };
+
+    // ── Per-employee data ──
+    const employees = allEmployees.map((employee) => {
+      let daysPresent = 0;
+      let leavesTaken = 0;
+      let daysAbsent = 0;
+      let totalWorkedHours = 0;
+      let presentWorkingDays = 0;
+
+      // ── Build leave dates set for this employee ──
+      const leaveDates = new Set();
+      allLeaves
+        .filter((l) => l.employeeId.toString() === employee._id.toString())
+        .forEach((leave) => {
+          let day = new Date(leave.startDate);
+          const end = new Date(leave.endDate);
+          while (day <= end) {
+            // ✅ local date string
+            const dayStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+            if (day >= weekStart && day <= weekEnd) leaveDates.add(dayStr);
+            day.setDate(day.getDate() + 1);
+          }
+        });
+
+      const attendance = dates.map(({ date, day, isWeekend, isHoliday, isPastOrToday }) => {
+        const isLeaveApplied = leaveDates.has(date);
+
+        if (isWeekend) {
+          return { date, day, status: "Weekend", leaveApplied: false, hoursWorked: 0, clockIn: null, clockOut: null };
+        }
+        if (isHoliday) {
+          return { date, day, status: "Holiday", leaveApplied: false, hoursWorked: 0, clockIn: null, clockOut: null };
+        }
+
+        const record = allAttendance.find(
+          (att) =>
+            att.employeeId.toString() === employee._id.toString() &&
+            // ✅ use toLocaleDateString('en-CA') to get YYYY-MM-DD in local timezone
+            new Date(att.date).toLocaleDateString("en-CA") === date
+        );
+
+        let hoursWorked = 0;
+        const clockIn = record?.clockInTime || null;
+        const clockOut = record?.clockOutTime || null;
+
+        if (clockIn && clockOut) {
+          const inTime = parseClockTime(date, clockIn);
+          const outTime = parseClockTime(date, clockOut);
+          if (inTime && outTime && outTime > inTime) {
+            hoursWorked = (outTime - inTime) / (1000 * 60 * 60);
+            hoursWorked -= (record.breakTime || 0) / 60;
+            if (hoursWorked < 0) hoursWorked = 0;
+          }
+        }
+
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+        const isToday = date === todayStr;
+
+
+        let status = "Absent";
+        let presence = 0;
+
+        if (hoursWorked > 0) {
+          const fraction = hoursWorked / requiredHoursPerDay;
+          if (fraction >= 0.95)      { status = "Present";           presence = 1;    }
+          else if (fraction >= 0.7)  { status = "Three Quarter Day"; presence = 0.75; }
+          else if (fraction >= 0.45) { status = "Half Day";          presence = 0.5;  }
+          else                       { status = "Quarter Day";        presence = 0.25; }
+        } else if (isToday && clockIn) {
+            status = "Clocked In";  // clocked in but not out yet
+          } else if (isLeaveApplied) {
+          status = "On Leave";
+          if (isPastOrToday) leavesTaken += 1;
+        } else if (isPastOrToday) {
+          daysAbsent += 1;
+        }
+
+        if (isPastOrToday) {
+          daysPresent += presence;
+          if (presence > 0) {
+            totalWorkedHours += hoursWorked;
+            presentWorkingDays++;
+          }
+        }
+
+        return {
+          date,
+          day,
+          status,
+          leaveApplied: isLeaveApplied,
+          hoursWorked: Math.round(hoursWorked * 100) / 100,
+          clockIn,
+          clockOut,
+        };
+      });
+
+      const totalDaysPresent = Math.round(daysPresent * 4) / 4;
+      const totalRequiredHours = presentWorkingDays * requiredHoursPerDay;
+      const hoursDiff = totalWorkedHours - totalRequiredHours;
+
+      return {
+        employeeId: employee._id,
+        name: employee.name,
+        email: employee.email,
+        image: processImageUrl(employee.image),
+        department: employee.department,
+        jobRole: employee.jobRole,
+        daysPresent: totalDaysPresent,
+        leavesTaken,
+        daysAbsent,
+        totalWorkedHours: Math.round(totalWorkedHours * 100) / 100,
+        totalRequiredHours,
+        extraHours: hoursDiff > 0.5 ? Math.round(hoursDiff * 100) / 100 : 0,
+        deficitHours: hoursDiff < 0 ? Math.round(Math.abs(hoursDiff) * 100) / 100 : 0,
+        attendance,
+      };
+    });
+
+    return res.status(200).json({
+      weekStart: `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, "0")}-${String(weekStart.getDate()).padStart(2, "0")}`,
+      weekEnd: `${weekEnd.getFullYear()}-${String(weekEnd.getMonth() + 1).padStart(2, "0")}-${String(weekEnd.getDate()).padStart(2, "0")}`,
+      totalWorkingDays,
+      weekendDays,
+      numberOfHolidays,
+      requiredHoursPerDay,
+      employees,
+    });
+  } catch (error) {
+    console.error("Error generating weekly attendance:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
