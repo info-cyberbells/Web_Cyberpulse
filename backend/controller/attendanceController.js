@@ -1429,8 +1429,8 @@ export const getPreviousDayAutoClockOutEmployees = async (req, res) => {
 
 
 //AUTO CLOCK-OUT CRON 
-cron.schedule('0 21 * * *', async () => {
-  console.log('🕒 Running daily auto clock-out process at 9:00 PM...');
+export const runAutoClockOutJob = async () => {
+  console.log('🕒 Running daily auto clock-out process at 9:00 PM via Agenda...');
 
   try {
     const today = new Date().toISOString().split('T')[0];
@@ -1501,7 +1501,7 @@ cron.schedule('0 21 * * *', async () => {
   } catch (error) {
     console.error('Error during auto clock-out:', error.message);
   }
-});
+};
 
 
 

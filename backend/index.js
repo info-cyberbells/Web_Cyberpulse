@@ -81,12 +81,17 @@ app.use("/api/fcm-token", routerFcmToken);
 app.use("/api/superadmin", routerSuperAdmin);
 app.use("/api/admin-profile", routerAdminProfile);
 
+import { initAgenda } from './agenda.js';
+
 const PORT = process.env.PORT || 4040;
 const httpServer = http.createServer(app);
 initializeSocketServer(httpServer);
 
 connectToDB()
-  .then(() => {
+  .then(async () => {
+    // Start Agenda after DB connection
+    await initAgenda().catch(err => console.error('Failed to init Agenda:', err));
+    
     httpServer.listen(PORT, () => {
       console.log(`Server started at: http://localhost:${PORT}`);
     });
