@@ -1985,7 +1985,8 @@ export const getWeeklyAttendance = async (req, res) => {
     const today = new Date();
     today.setHours(23, 59, 59, 999);
 
-    const { week, organizationId, department } = req.query;
+    const { week, department } = req.query;
+    const organizationId = req.user?.organizationId;
 
     if (!organizationId) {
       return res.status(400).json({ message: "organizationId is required" });

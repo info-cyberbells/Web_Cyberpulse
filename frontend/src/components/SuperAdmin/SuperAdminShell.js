@@ -30,6 +30,7 @@ import ChatContainer from '../Chat/ChatContainer';
 import WfhCreditsPage from '../WfhCredit/WfhCreditsPage';
 import NotificationPage from '../Notifications/NotificationPage';
 import Settings from '../OrganizationSettings';
+import WeeklyData from '../WeeklyEmployeeData/WeeklyEmployeesData';
 
 const SuperAdminShell = ({ lastPath }) => {
   const navigate = useNavigate();
@@ -121,6 +122,7 @@ const SuperAdminShell = ({ lastPath }) => {
         <Route path="/holidays" element={<Holidays />} />
         <Route path="/help-desk" element={<HelpDesk />} />
         <Route path="/monthly-data" element={<Monthlydata />} />
+        <Route path="/weekly-data" element={<WeeklyData />} />
         <Route path="/get-all-requests" element={<AdminAdvanceSalary />} />
         <Route path="/salary-calculator" element={<SalaryCalculator />} />
         <Route path="/add-employee/:employeeId" element={<EmployeeDetails />} />
