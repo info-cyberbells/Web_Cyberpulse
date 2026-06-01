@@ -1,7 +1,7 @@
 import { Agenda } from 'agenda';
 import { MongoBackend } from '@agendajs/mongo-backend';
 import mongoose from 'mongoose';
-import { runAutoClockOutJob } from './controller/attendanceController.js';
+import { runAutoClockOutJob, runAutoClockOutJobOrg2 } from './controller/attendanceController.js';
 
 let agenda;
 
@@ -27,6 +27,11 @@ export const initAgenda = async () => {
     await runAutoClockOutJob();
   });
 
+  // ✅ Added
+  agenda.define('daily-auto-clock-out-org2', async (job) => {
+    await runAutoClockOutJobOrg2();
+  });
+
   // Start agenda
   await agenda.start();
   console.log('🚀 Agenda started successfully');
@@ -35,6 +40,10 @@ export const initAgenda = async () => {
   // The '0 21 * * *' cron expression means 9:00 PM
   await agenda.every('0 21 * * *', 'daily-auto-clock-out', { timezone: 'Asia/Kolkata' });
   console.log('🕒 Scheduled daily-auto-clock-out job for 9:00 PM Asia/Kolkata');
+
+  // ✅ Added — runs at 9:00 PM IST, clock-out time inside function is 7:00 PM
+  await agenda.every('0 21 * * *', 'daily-auto-clock-out-org2', { timezone: 'Asia/Kolkata' });
+  console.log('🕒 Scheduled daily-auto-clock-out-org2 job for 9:00 PM IST');
 };
 
 export const getAgenda = () => agenda;

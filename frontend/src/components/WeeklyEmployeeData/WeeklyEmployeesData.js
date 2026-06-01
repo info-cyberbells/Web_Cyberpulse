@@ -793,7 +793,7 @@ const handleDownloadExcel = () => {
                     variant="h6"
                     fontWeight={600}
                     color="#2563eb"
-                    sx={{ whiteSpace: "nowrap" }}
+                    sx={{ whiteSpace: "nowrap", fontSize: "13px" }}
                   >
                     {weekLabel}
                   </Typography>
