@@ -2,6 +2,7 @@ import LeaveRequest from "../model/leaveRequestModel.js";
 import Employee from '../model//employeeModel.js'
 import WfhCredit from "../model/wfhCreditModel.js";
 import mongoose from "mongoose";
+import nodemailer from "nodemailer";
 import { createNotification, createNotificationForEmployee } from "../helpers/createNotification.js";
 
 function calculateLeaveDeduction(type, startDate, endDate) {
@@ -233,6 +234,23 @@ export const addLeaveRequest = async (req, res) => {
       resourceType: "leaveRequest",
     });
 
+    (async () => {
+      try {
+        const managers = await Employee.find({
+          organizationId: employee.organizationId || organizationId,
+          type: { $in: [ 3, 4, 5] },
+          status: "1",
+          email: { $exists: true, $ne: null },
+        }).select("email name");
+
+        await Promise.allSettled(
+          managers.map((manager) => sendLeaveRequestEmail(manager.email, employee.name, leaveType, startDate, endDate, reason,  finalStartTime, finalEndTime))
+        );
+      } catch (err) {
+        console.error("Failed to send leave notification emails:", err);
+      }
+    })();
+
     res.status(201).json({
       success: true,
       data: savedLeaveRequest
@@ -246,6 +264,137 @@ export const addLeaveRequest = async (req, res) => {
   }
 };
 
+
+const sendLeaveRequestEmail = async (email, employeeName, leaveType, startDate, endDate, reason, startTime, endTime) => {
+  const transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false,
+    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+    connectionTimeout: 20000,
+    greetingTimeout: 10000,
+    socketTimeout: 20000,
+    tls: { rejectUnauthorized: false },
+  });
+
+  const mailOptions = {
+    from: `"CyberPulse" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: `Leave Request - ${employeeName}`,
+    html: `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Leave Request</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f6f8;font-family:'Segoe UI',Arial,sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f8;padding:40px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e0e0e0;">
+
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#1a237e;padding:28px 40px;text-align:center;">
+              <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:600;letter-spacing:0.5px;">CyberPulse</h1>
+              <p style="margin:6px 0 0;color:#c5cae9;font-size:13px;">Human Resource Management</p>
+            </td>
+          </tr>
+
+          <!-- Title Bar -->
+          <tr>
+            <td style="background-color:#e8eaf6;padding:16px 40px;border-bottom:1px solid #e0e0e0;">
+              <p style="margin:0;font-size:13px;color:#5c6bc0;font-weight:600;text-transform:uppercase;letter-spacing:1px;">📋 Leave Request Notification</p>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:32px 40px;">
+              <p style="margin:0 0 8px;font-size:15px;color:#37474f;">Dear HR,</p>
+              <p style="margin:0 0 24px;font-size:15px;color:#37474f;line-height:1.6;">
+                This is to inform you that <strong style="color:#1a237e;">${employeeName}</strong> has submitted a leave request. Please review the details below and take the necessary action.
+              </p>
+
+              <!-- Details Table -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e0e0e0;border-radius:6px;overflow:hidden;margin-bottom:24px;">
+                <tr style="background-color:#f5f5f5;">
+                  <td style="padding:10px 16px;font-size:12px;font-weight:600;color:#78909c;text-transform:uppercase;letter-spacing:0.8px;width:35%;">Field</td>
+                  <td style="padding:10px 16px;font-size:12px;font-weight:600;color:#78909c;text-transform:uppercase;letter-spacing:0.8px;">Details</td>
+                </tr>
+                <tr style="border-top:1px solid #e0e0e0;">
+                  <td style="padding:12px 16px;font-size:14px;color:#546e7a;font-weight:500;">Employee</td>
+                  <td style="padding:12px 16px;font-size:14px;color:#263238;font-weight:600;">${employeeName}</td>
+                </tr>
+                <tr style="background-color:#fafafa;border-top:1px solid #e0e0e0;">
+                  <td style="padding:12px 16px;font-size:14px;color:#546e7a;font-weight:500;">Leave Type</td>
+                  <td style="padding:12px 16px;font-size:14px;color:#263238;">
+                    <span style="background-color:#e8eaf6;color:#3949ab;padding:3px 10px;border-radius:12px;font-size:13px;font-weight:600;text-transform:capitalize;">${leaveType}</span>
+                  </td>
+                </tr>
+                <tr style="border-top:1px solid #e0e0e0;">
+                  <td style="padding:12px 16px;font-size:14px;color:#546e7a;font-weight:500;">From Date</td>
+                  <td style="padding:12px 16px;font-size:14px;color:#263238;">
+                    ${new Date(startDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    ${(leaveType === 'half-day' || leaveType === 'short-leave') && startTime ? `<span style="color:#546e7a;font-size:13px;margin-left:6px;">${startTime} IST</span>` : ''}
+                  </td>
+                </tr>
+                <tr style="background-color:#fafafa;border-top:1px solid #e0e0e0;">
+                  <td style="padding:12px 16px;font-size:14px;color:#546e7a;font-weight:500;">To Date</td>
+                  <td style="padding:12px 16px;font-size:14px;color:#263238;">
+                    ${new Date(endDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    ${(leaveType === 'half-day' || leaveType === 'short-leave') && endTime ? `<span style="color:#546e7a;font-size:13px;margin-left:6px;">${endTime} IST</span>` : ''}
+                  </td>
+                </tr>
+                <tr style="border-top:1px solid #e0e0e0;">
+                  <td style="padding:12px 16px;font-size:14px;color:#546e7a;font-weight:500;">Reason</td>
+                  <td style="padding:12px 16px;font-size:14px;color:#263238;">${reason}</td>
+                </tr>
+              </table>
+
+              <p style="margin:0;font-size:14px;color:#546e7a;line-height:1.6;">
+                Please log in to the <strong>CyberPulse portal</strong> to approve or reject this request at your earliest convenience.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Divider -->
+          <tr>
+            <td style="padding:0 40px;">
+              <hr style="border:none;border-top:1px solid #e0e0e0;margin:0;" />
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:20px 40px;text-align:center;">
+              <p style="margin:0 0 4px;font-size:12px;color:#90a4ae;">This is an automated notification from CyberPulse HRM.</p>
+              <p style="margin:0;font-size:12px;color:#90a4ae;">© ${new Date().getFullYear()} CyberPulse. All rights reserved.</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
+    `,
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log("Leave request email sent to:", email, info.response);
+    return info;
+  } catch (error) {
+    console.error("Failed to send leave request email:", error);
+    throw new Error(`Email sending failed: ${error.message}`);
+  }
+};
 
 
 
@@ -475,13 +624,15 @@ export const updateLeaveRequest = async (req, res) => {
     await leaveRequest.save();
     await employee.save();
 
+    console.log("STATUS VALUE IS:", JSON.stringify(status));
+
     // Notify employee on approve/reject
-    if (status === "approved" || status === "rejected") {
+    if (status === "Approved" || status === "Rejected") {
       const actionBy = req.user?.id;
       const actionByEmp = actionBy ? await Employee.findById(actionBy).select("name") : null;
       const actionByName = actionByEmp?.name || "Admin";
-      const notifType = status === "approved" ? "leave_approved" : "leave_rejected";
-      const notifTitle = status === "approved" ? "Leave Approved" : "Leave Rejected";
+      const notifType = status === "Approved" ? "leave_approved" : "leave_rejected";
+      const notifTitle = status === "Approved" ? "Leave Approved" : "Leave Rejected";
 
       createNotificationForEmployee(notifType, {
         triggeredBy: actionBy || leaveRequest.employeeId,
@@ -492,15 +643,154 @@ export const updateLeaveRequest = async (req, res) => {
         resourceId: leaveRequest._id,
         resourceType: "leaveRequest",
       });
-    }
 
-    res.status(200).json({ success: true, data: leaveRequest });
+      // Send email to employee on approve/reject
+      (async () => {
+        try {
+        console.log("Sending leave status email to:", employee.email); 
+          await sendLeaveStatusEmail(employee.email, employee.name, leaveType, startDate, endDate, status, actionByName, leaveRequest.startTime, leaveRequest.endTime);
+          console.log("Email sent successfully"); 
+            } catch (err) {
+          console.error("Failed to send leave status email:", err.message); 
+        }
+      })();
+          }
+
+          res.status(200).json({ success: true, data: leaveRequest });
+        } catch (error) {
+          res.status(400).json({ success: false, error: error.message });
+        }
+      };
+
+// Send Leave Request Response to Employee
+const sendLeaveStatusEmail = async (email, employeeName, leaveType, startDate, endDate, status, actionByName,  startTime, endTime) => {
+  const transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false,
+    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+    connectionTimeout: 20000,
+    greetingTimeout: 10000,
+    socketTimeout: 20000,
+    tls: { rejectUnauthorized: false },
+  });
+
+  const isApproved = status === "Approved";
+  const statusColor = isApproved ? "#2e7d32" : "#c62828";
+  const statusBg = isApproved ? "#e8f5e9" : "#ffebee";
+  const statusLabel = isApproved ? "Approved ✓" : "Rejected ✗";
+
+  const mailOptions = {
+    from: `"CyberPulse" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: `Leave Request ${isApproved ? "Approved" : "Rejected"} - CyberPulse`,
+      html: `
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  </head>
+  <body style="margin:0;padding:0;background-color:#f4f6f8;font-family:'Segoe UI',Arial,sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f8;padding:40px 0;">
+      <tr>
+        <td align="center">
+          <table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e0e0e0;">
+
+            <tr>
+              <td style="background-color:#1a237e;padding:28px 40px;text-align:center;">
+                <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:600;letter-spacing:0.5px;">CyberPulse</h1>
+                <p style="margin:6px 0 0;color:#c5cae9;font-size:13px;">Human Resource Management</p>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="background-color:${statusBg};padding:16px 40px;border-bottom:1px solid #e0e0e0;text-align:center;">
+                <p style="margin:0;font-size:16px;color:${statusColor};font-weight:700;letter-spacing:0.5px;">Leave Request ${statusLabel}</p>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:32px 40px;">
+                <p style="margin:0 0 8px;font-size:15px;color:#37474f;">Dear <strong style="color:#1a237e;">${employeeName}</strong>,</p>
+                <p style="margin:0 0 24px;font-size:15px;color:#37474f;line-height:1.6;">
+                  Your leave request has been <strong style="color:${statusColor};">${status}</strong> by <strong>${actionByName}</strong>. Please find the details below.
+                </p>
+
+                <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e0e0e0;border-radius:6px;overflow:hidden;margin-bottom:24px;">
+                  <tr style="background-color:#f5f5f5;">
+                    <td style="padding:10px 16px;font-size:12px;font-weight:600;color:#78909c;text-transform:uppercase;letter-spacing:0.8px;width:35%;">Field</td>
+                    <td style="padding:10px 16px;font-size:12px;font-weight:600;color:#78909c;text-transform:uppercase;letter-spacing:0.8px;">Details</td>
+                  </tr>
+                  <tr style="border-top:1px solid #e0e0e0;">
+                    <td style="padding:12px 16px;font-size:14px;color:#546e7a;font-weight:500;">Leave Type</td>
+                    <td style="padding:12px 16px;font-size:14px;color:#263238;">
+                      <span style="background-color:#e8eaf6;color:#3949ab;padding:3px 10px;border-radius:12px;font-size:13px;font-weight:600;text-transform:capitalize;">${leaveType}</span>
+                    </td>
+                  </tr>
+                  <tr style="background-color:#fafafa;border-top:1px solid #e0e0e0;">
+                    <td style="padding:12px 16px;font-size:14px;color:#546e7a;font-weight:500;">From Date</td>
+                    <td style="padding:12px 16px;font-size:14px;color:#263238;">
+                      ${new Date(startDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      ${(leaveType === 'half-day' || leaveType === 'short-leave') && startTime ? `<span style="color:#546e7a;font-size:13px;margin-left:6px;">${startTime} IST</span>` : ''}
+                    </td>
+                  </tr>
+                  <tr style="border-top:1px solid #e0e0e0;">
+                    <td style="padding:12px 16px;font-size:14px;color:#546e7a;font-weight:500;">To Date</td>
+                    <td style="padding:12px 16px;font-size:14px;color:#263238;">
+                      ${new Date(endDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      ${(leaveType === 'half-day' || leaveType === 'short-leave') && endTime ? `<span style="color:#546e7a;font-size:13px;margin-left:6px;">${endTime} IST</span>` : ''}
+                    </td>
+                  </tr>
+                  <tr style="background-color:#fafafa;border-top:1px solid #e0e0e0;">
+                    <td style="padding:12px 16px;font-size:14px;color:#546e7a;font-weight:500;">Status</td>
+                    <td style="padding:12px 16px;font-size:14px;">
+                      <span style="background-color:${statusBg};color:${statusColor};padding:3px 10px;border-radius:12px;font-size:13px;font-weight:600;text-transform:capitalize;">${statusLabel}</span>
+                    </td>
+                  </tr>
+                  <tr style="border-top:1px solid #e0e0e0;">
+                    <td style="padding:12px 16px;font-size:14px;color:#546e7a;font-weight:500;">Actioned By</td>
+                    <td style="padding:12px 16px;font-size:14px;color:#263238;">${actionByName}</td>
+                  </tr>
+                </table>
+
+                <p style="margin:0;font-size:14px;color:#546e7a;line-height:1.6;">
+                  For any queries, please contact your HR or manager via the <strong>CyberPulse portal</strong>.
+                </p>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:0 40px;">
+                <hr style="border:none;border-top:1px solid #e0e0e0;margin:0;" />
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:20px 40px;text-align:center;">
+                <p style="margin:0 0 4px;font-size:12px;color:#90a4ae;">This is an automated notification from CyberPulse HRM.</p>
+                <p style="margin:0;font-size:12px;color:#90a4ae;">© ${new Date().getFullYear()} CyberPulse. All rights reserved.</p>
+              </td>
+            </tr>
+
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+  </html>
+      `,
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log("Leave status email sent to:", email, info.response);
+    return info;
   } catch (error) {
-    res.status(400).json({ success: false, error: error.message });
+    console.error("Failed to send leave status email:", error);
+    throw new Error(`Email sending failed: ${error.message}`);
   }
 };
-
-
 
 // Delete a Leave Request
 export const deleteLeaveRequest = async (req, res) => {

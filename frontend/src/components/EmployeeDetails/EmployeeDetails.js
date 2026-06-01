@@ -1120,7 +1120,7 @@ const EmployeeDetails = () => {
                                                 )}
                                             </Typography>
                                         </Grid>
-                                        {day.attendance?.clockInLatitude != null &&
+                                        {/* {day.attendance?.clockInLatitude != null &&
                                             day.attendance?.clockInLongitude != null && (
                                                 <Grid item xs={12} sm={6}>
                                                     <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
@@ -1149,7 +1149,86 @@ const EmployeeDetails = () => {
                                                         Click to open in Google Maps
                                                     </Typography>
                                                 </Grid>
-                                            )}
+                                            )} */}
+                                            {day.attendance?.clockInLatitude != null &&
+  day.attendance?.clockInLongitude != null && (
+    <Grid item xs={12} sm={6}>
+      <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+        Clock In Location
+      </Typography>
+
+      <div
+        ref={(el) => {
+          if (!el || el._mapInit) return;
+          el._mapInit = true;
+
+          const initMap = () => {
+            const L = window.L;
+            const map = L.map(el, {
+              center: [day.attendance.clockInLatitude, day.attendance.clockInLongitude],
+              zoom: 16,
+              scrollWheelZoom: false,
+              attributionControl: false
+            });
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              attribution: '© OpenStreetMap contributors',
+            }).addTo(map);
+
+            const icon = L.divIcon({
+              className: '',
+              html: `<div style="width:22px;height:22px;background:#e53935;border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 8px rgba(0,0,0,0.35)"></div>`,
+              iconSize: [22, 22],
+              iconAnchor: [11, 22],
+            });
+
+            L.marker([day.attendance.clockInLatitude, day.attendance.clockInLongitude], { icon })
+              .addTo(map);
+            //   .bindPopup(`<b>Clock In</b><br/>${day.attendance.clockInLatitude.toFixed(6)}, ${day.attendance.clockInLongitude.toFixed(6)}`)
+            //   .openPopup();
+          };
+
+          if (!document.getElementById('leaflet-css')) {
+            const link = document.createElement('link');
+            link.id = 'leaflet-css';
+            link.rel = 'stylesheet';
+            link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+            document.head.appendChild(link);
+          }
+
+          if (window.L) {
+            initMap();
+          } else if (!document.getElementById('leaflet-js')) {
+            const script = document.createElement('script');
+            script.id = 'leaflet-js';
+            script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+            script.onload = initMap;
+            document.head.appendChild(script);
+          } else {
+            document.getElementById('leaflet-js').addEventListener('load', initMap);
+          }
+        }}
+        style={{
+          width: '100%',
+          height: 150,
+          borderRadius: 8,
+          border: '1px solid #e0e0e0',
+          overflow: 'hidden',
+        }}
+      />
+
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+        {/* {day.attendance.clockInLatitude.toFixed(6)}, {day.attendance.clockInLongitude.toFixed(6)} · {' '} */}
+        <a
+          href={`https://www.google.com/maps?q=${day.attendance.clockInLatitude},${day.attendance.clockInLongitude}`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Open in Google Maps ↗
+        </a>
+      </Typography>
+    </Grid>
+  )}
                                         <Grid item xs={12}>
                                             <Typography variant="h6" sx={{ fontSize: '1.2rem', mt: 2, mb: 1 }}>
                                                 Break Details
