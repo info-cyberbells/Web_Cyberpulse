@@ -238,14 +238,22 @@ export const addLeaveRequest = async (req, res) => {
       try {
         const managers = await Employee.find({
           organizationId: employee.organizationId || organizationId,
-          type: { $in: [ 3, 4, 5] },
+          type: { $in: [1, 3, 4, 5] },
           status: "1",
           email: { $exists: true, $ne: null },
-        }).select("email name");
+        }).select("email name type");
 
-        await Promise.allSettled(
-          managers.map((manager) => sendLeaveRequestEmail(manager.email, employee.name, leaveType, startDate, endDate, reason,  finalStartTime, finalEndTime))
-        );
+        // TO: type 4 (HR/managers who approve), CC: types 1, 3, 5 (visibility only)
+        const toEmails = managers.filter(m => m.type === 4).map(m => m.email);
+        const ccEmails = managers.filter(m => m.type !== 4).map(m => m.email);
+
+        // If no type 4 found, put all in TO so someone still gets the email
+        const finalTo = toEmails.length > 0 ? toEmails : ccEmails;
+        const finalCc = toEmails.length > 0 ? ccEmails : [];
+
+        if (finalTo.length > 0) {
+          await sendLeaveRequestEmail(finalTo, finalCc, employee.name, leaveType, startDate, endDate, reason, finalStartTime, finalEndTime);
+        }
       } catch (err) {
         console.error("Failed to send leave notification emails:", err);
       }
@@ -265,7 +273,7 @@ export const addLeaveRequest = async (req, res) => {
 };
 
 
-const sendLeaveRequestEmail = async (email, employeeName, leaveType, startDate, endDate, reason, startTime, endTime) => {
+const sendLeaveRequestEmail = async (toEmails, ccEmails, employeeName, leaveType, startDate, endDate, reason, startTime, endTime) => {
   const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: 587,
@@ -279,7 +287,8 @@ const sendLeaveRequestEmail = async (email, employeeName, leaveType, startDate, 
 
   const mailOptions = {
     from: `"CyberPulse" <${process.env.EMAIL_USER}>`,
-    to: email,
+    to: Array.isArray(toEmails) ? toEmails.join(', ') : toEmails,
+    ...(ccEmails && ccEmails.length > 0 && { cc: ccEmails.join(', ') }),
     subject: `Leave Request - ${employeeName}`,
     html: `
 <!DOCTYPE html>
@@ -388,7 +397,7 @@ const sendLeaveRequestEmail = async (email, employeeName, leaveType, startDate, 
 
   try {
     const info = await transporter.sendMail(mailOptions);
-    console.log("Leave request email sent to:", email, info.response);
+    console.log("Leave request email sent — TO:", toEmails, "CC:", ccEmails, info.response);
     return info;
   } catch (error) {
     console.error("Failed to send leave request email:", error);
@@ -647,23 +656,23 @@ export const updateLeaveRequest = async (req, res) => {
       // Send email to employee on approve/reject
       (async () => {
         try {
-        console.log("Sending leave status email to:", employee.email); 
+          console.log("Sending leave status email to:", employee.email);
           await sendLeaveStatusEmail(employee.email, employee.name, leaveType, startDate, endDate, status, actionByName, leaveRequest.startTime, leaveRequest.endTime);
-          console.log("Email sent successfully"); 
-            } catch (err) {
-          console.error("Failed to send leave status email:", err.message); 
+          console.log("Email sent successfully");
+        } catch (err) {
+          console.error("Failed to send leave status email:", err.message);
         }
       })();
-          }
+    }
 
-          res.status(200).json({ success: true, data: leaveRequest });
-        } catch (error) {
-          res.status(400).json({ success: false, error: error.message });
-        }
-      };
+    res.status(200).json({ success: true, data: leaveRequest });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+};
 
 // Send Leave Request Response to Employee
-const sendLeaveStatusEmail = async (email, employeeName, leaveType, startDate, endDate, status, actionByName,  startTime, endTime) => {
+const sendLeaveStatusEmail = async (email, employeeName, leaveType, startDate, endDate, status, actionByName, startTime, endTime) => {
   const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: 587,
@@ -684,7 +693,7 @@ const sendLeaveStatusEmail = async (email, employeeName, leaveType, startDate, e
     from: `"CyberPulse" <${process.env.EMAIL_USER}>`,
     to: email,
     subject: `Leave Request ${isApproved ? "Approved" : "Rejected"} - CyberPulse`,
-      html: `
+    html: `
   <!DOCTYPE html>
   <html lang="en">
   <head>

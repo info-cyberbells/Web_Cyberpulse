@@ -72,7 +72,7 @@ export const login = async (req, res) => {
     const token = jwt.sign(
       { id: employee._id, email: employee.email, type: employee.type, organizationId: employee.organizationId },
       process.env.JWT_SECRET,
-      { expiresIn: "7d" }
+      { expiresIn: "30d" }
     );
 
     // Return employee details with token
