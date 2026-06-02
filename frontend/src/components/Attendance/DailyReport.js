@@ -164,31 +164,72 @@ const DailyReport = ({
               📍 {clockInAddress}
             </Typography>
           )}
-          <Link
-            href={`https://www.google.com/maps?q=${clockInLatitude},${clockInLongitude}`}
-            target="_blank"
-            rel="noopener"
-            underline="none"
-          >
-            <Box
-              component="img"
-              src={`${API_BASE_URL}/org-settings/static-map?lat=${clockInLatitude}&lng=${clockInLongitude}&zoom=16&size=600x260`}
-              alt="Clock-in location map"
-              sx={{
-                width: "100%",
-                borderRadius: 1,
-                display: "block",
-                border: "1px solid",
-                borderColor: "divider",
-                cursor: "pointer",
-              }}
-            />
-          </Link>
+          <div
+            ref={(el) => {
+              if (!el || el._mapInit) return;
+              el._mapInit = true;
+
+              const initMap = () => {
+                const L = window.L;
+                const map = L.map(el, {
+                  center: [clockInLatitude, clockInLongitude],
+                  zoom: 16,
+                  scrollWheelZoom: false,
+                  attributionControl: false,
+                });
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+                const icon = L.divIcon({
+                  className: '',
+                  html: `<div style="width:22px;height:22px;background:#e53935;border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 8px rgba(0,0,0,0.35)"></div>`,
+                  iconSize: [22, 22],
+                  iconAnchor: [11, 22],
+                });
+
+                L.marker([clockInLatitude, clockInLongitude], { icon }).addTo(map);
+              };
+
+              if (!document.getElementById('leaflet-css')) {
+                const link = document.createElement('link');
+                link.id = 'leaflet-css';
+                link.rel = 'stylesheet';
+                link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+                document.head.appendChild(link);
+              }
+
+              if (window.L) {
+                initMap();
+              } else if (!document.getElementById('leaflet-js')) {
+                const script = document.createElement('script');
+                script.id = 'leaflet-js';
+                script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+                script.onload = initMap;
+                document.head.appendChild(script);
+              } else {
+                document.getElementById('leaflet-js').addEventListener('load', initMap);
+              }
+            }}
+            style={{
+              width: '100%',
+              height: 200,
+              borderRadius: 8,
+              border: '1px solid #e0e0e0',
+              overflow: 'hidden',
+            }}
+          />
           <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-            Tap to open in Google Maps
+            <a
+              href={`https://www.google.com/maps?q=${clockInLatitude},${clockInLongitude}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Open in Google Maps ↗
+            </a>
           </Typography>
         </Paper>
-      )}
+      )
+      }
 
       <Paper elevation={1} sx={{ p: 2 }}>
         <Typography variant="h6" gutterBottom fontWeight={500}>
@@ -212,7 +253,7 @@ const DailyReport = ({
                         wordBreak: "break-word",
                       }}
                     >
-                    {parse(task.description)}
+                      {parse(task.description)}
                     </Typography>
                     <Chip
                       label={task.status}
@@ -240,7 +281,7 @@ const DailyReport = ({
           )}
         </Stack>
       </Paper>
-    </Stack>
+    </Stack >
   );
 };
 

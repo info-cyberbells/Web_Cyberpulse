@@ -38,11 +38,11 @@ export const initAgenda = async () => {
 
   // Schedule the job to run every day at 9:00 PM Asia/Kolkata
   // The '0 21 * * *' cron expression means 9:00 PM
-  await agenda.every('0 21 * * *', 'daily-auto-clock-out', { timezone: 'Asia/Kolkata' });
+  await agenda.every('0 21 * * *', 'daily-auto-clock-out', null, { timezone: 'Asia/Kolkata', skipImmediate: true });
   console.log('🕒 Scheduled daily-auto-clock-out job for 9:00 PM Asia/Kolkata');
 
   // ✅ Added — runs at 9:00 PM IST, clock-out time inside function is 7:00 PM
-  await agenda.every('0 21 * * *', 'daily-auto-clock-out-org2', { timezone: 'Asia/Kolkata' });
+  await agenda.every('0 21 * * *', 'daily-auto-clock-out-org2', null, { timezone: 'Asia/Kolkata', skipImmediate: true });
   console.log('🕒 Scheduled daily-auto-clock-out-org2 job for 9:00 PM IST');
 };
 

@@ -954,9 +954,9 @@ const TaskAttendanceManagement = ({
                 label={
                   <Stack direction="row" spacing={1} alignItems="center">
                     <span>Previous Tasks</span>
-                    {previousTasks.length > 0 && (
+                    {Object.keys(groupedPreviousTasks).length > 0 && (
                       <Chip
-                        label={previousTasks.length}
+                        label={Object.values(groupedPreviousTasks).flat().length}
                         size="small"
                         color="warning"
                         sx={{ height: 20, fontSize: '0.7rem', fontWeight: 700, minWidth: 28 }}

@@ -182,9 +182,9 @@ const taskSlice = createSlice({
       })
       .addCase(addTaskAsync.fulfilled, (state, action) => {
         state.loading = false;
-        if (action.payload?.task) {
-          state.tasks.push(action.payload.task);
-          state.previousTasks.push(action.payload.task);
+        if (action.payload?.data) {
+          state.tasks.push(action.payload.data);
+          state.previousTasks.push(action.payload.data);
           const counts = calculateTaskCounts(state.tasks);
           Object.assign(state, counts);
         }
@@ -255,21 +255,21 @@ const taskSlice = createSlice({
       })
       .addCase(updateTaskAsync.fulfilled, (state, action) => {
         state.loading = false;
-        if (action.payload?.task) {
+        if (action.payload?.data) {
           // Update in current tasks
           const index = state.tasks.findIndex(
-            (task) => task._id === action.payload.task._id
+            (task) => task._id === action.payload.data._id
           );
           if (index !== -1) {
-            state.tasks[index] = action.payload.task;
+            state.tasks[index] = action.payload.data;
           }
 
           // Update in previous tasks
           const prevIndex = state.previousTasks.findIndex(
-            (task) => task._id === action.payload.task._id
+            (task) => task._id === action.payload.data._id
           );
           if (prevIndex !== -1) {
-            state.previousTasks[prevIndex] = action.payload.task;
+            state.previousTasks[prevIndex] = action.payload.data;
           }
 
           const counts = calculateTaskCounts(state.tasks);
@@ -291,38 +291,38 @@ const taskSlice = createSlice({
       .addCase(updateTaskStatusAsync.fulfilled, (state, action) => {
         state.statusUpdateLoading = false;
 
-        if (action.payload?.task) {
+        if (action.payload?.data) {
           // Update in current tasks
           const index = state.tasks.findIndex(
-            (task) => task._id === action.payload.task._id
+            (task) => task._id === action.payload.data._id
           );
           if (index !== -1) {
             state.tasks[index] = {
               ...state.tasks[index],
-              ...action.payload.task,
-              status: action.payload.task.status,
-              duration: action.payload.task.duration,
-              startTime: action.payload.task.startTime,
-              pauseTime: action.payload.task.pauseTime,
-              completionTime: action.payload.task.completionTime,
-              workSessions: action.payload.task.workSessions,
+              ...action.payload.data,
+              status: action.payload.data.status,
+              duration: action.payload.data.duration,
+              startTime: action.payload.data.startTime,
+              pauseTime: action.payload.data.pauseTime,
+              completionTime: action.payload.data.completionTime,
+              workSessions: action.payload.data.workSessions,
             };
           }
 
           // Update in previousTasks
           const previousTaskIndex = state.previousTasks.findIndex(
-            (task) => task._id === action.payload.task._id
+            (task) => task._id === action.payload.data._id
           );
           if (previousTaskIndex !== -1) {
             state.previousTasks[previousTaskIndex] = {
               ...state.previousTasks[previousTaskIndex],
-              ...action.payload.task,
-              status: action.payload.task.status,
-              duration: action.payload.task.duration,
-              startTime: action.payload.task.startTime,
-              pauseTime: action.payload.task.pauseTime,
-              completionTime: action.payload.task.completionTime,
-              workSessions: action.payload.task.workSessions
+              ...action.payload.data,
+              status: action.payload.data.status,
+              duration: action.payload.data.duration,
+              startTime: action.payload.data.startTime,
+              pauseTime: action.payload.data.pauseTime,
+              completionTime: action.payload.data.completionTime,
+              workSessions: action.payload.data.workSessions
             };
           }
 
