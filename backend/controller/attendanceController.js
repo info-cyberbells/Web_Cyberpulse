@@ -809,15 +809,13 @@ export const getMonthlySummary = async (req, res) => {
 
       let clockIn;
       try {
-        clockIn = new Date(record.clockInTime);
+        const decrypted = decryptTime(record.clockInTime);
+        if (!decrypted) return false;
+        clockIn = new Date(decrypted);
         if (isNaN(clockIn.getTime())) {
           console.warn('Invalid clockInTime for record:', record._id);
           return false;
         }
-
-        // Adjust for +5:30 timezone offset
-        clockIn.setHours(clockIn.getHours() + 5);
-        clockIn.setMinutes(clockIn.getMinutes() + 30);
       } catch (err) {
         console.error('Error parsing clockInTime:', err);
         return false;
@@ -842,12 +840,10 @@ export const getMonthlySummary = async (req, res) => {
 
       let clockIn;
       try {
-        clockIn = new Date(record.clockInTime);
+        const decrypted = decryptTime(record.clockInTime);
+        if (!decrypted) return;
+        clockIn = new Date(decrypted);
         if (isNaN(clockIn.getTime())) return;
-
-        // Adjust for +5:30 timezone
-        clockIn.setHours(clockIn.getHours() + 5);
-        clockIn.setMinutes(clockIn.getMinutes() + 30);
       } catch (err) {
         console.error('Error processing record clockInTime:', err);
         return;
@@ -1257,22 +1253,24 @@ export const updateAttendance = async (req, res) => {
     // Recalculate workingDay if both times available - ORIGINAL LOGIC PRESERVED
     if (attendance.clockInTime && attendance.clockOutTime) {
       try {
-        const clockIn = new Date(attendance.clockInTime);
-        const clockOut = new Date(attendance.clockOutTime);
+        const decryptedIn = decryptTime(attendance.clockInTime);
+        const decryptedOut = decryptTime(attendance.clockOutTime);
+        const clockIn = new Date(decryptedIn);
+        const clockOut = new Date(decryptedOut);
 
         if (!isNaN(clockIn) && !isNaN(clockOut)) {
-          const hoursWorked = (clockOut - clockIn) / (1000 * 60 * 60);
+          const breakMinutes = attendance.breakTime || 0;
+          const hoursWorked = ((clockOut - clockIn) / (1000 * 60 * 60)) - (breakMinutes / 60);
 
-          // Fetch organization settings for required hours
           const emp = await Employee.findById(attendance.employeeId).select("organizationId");
           const orgSettings = emp?.organizationId
             ? await OrganizationSettings.findOne({ organizationId: emp.organizationId })
             : null;
-          const requiredHours = orgSettings?.requiredHoursPerDay || 8;
+          const requiredHours = orgSettings?.workingHoursRequired || 8;
 
           const fraction = hoursWorked / requiredHours;
 
-          if (fraction >= 0.95) {
+          if (fraction >= 0.98) {
             attendance.workingDay = 1;
           } else if (fraction >= 0.7) {
             attendance.workingDay = 0.75;
@@ -1433,7 +1431,7 @@ export const runAutoClockOutJob = async () => {
   console.log('🕒 Running daily auto clock-out process at 9:00 PM via Agenda...');
 
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 
     //only for your specific org
     const TARGET_ORG_ID = '686e0094275619eb4b6bddab';
@@ -1456,7 +1454,7 @@ export const runAutoClockOutJob = async () => {
       return;
     }
 
-    const fixedClockOutTime = `${today}T18:30:00`;
+    const fixedClockOutTime = `${today}T13:00:00.000Z`;
 
     for (const attendance of unclockedEmployees) {
       // Pause all running tasks for this employee before clocking out
@@ -1508,7 +1506,7 @@ export const runAutoClockOutJobOrg2 = async () => {
   console.log('🕒 Running daily auto clock-out process at 7:00 PM via Agenda...');
 
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 
     const TARGET_ORG_ID = '69dc91330cf75741348c30a2';
 
@@ -1530,7 +1528,7 @@ export const runAutoClockOutJobOrg2 = async () => {
       return;
     }
 
-    const fixedClockOutTime = `${today}T19:00:00`;
+    const fixedClockOutTime = `${today}T13:30:00.000Z`;
 
     for (const attendance of unclockedEmployees) {
       const runningTasks = await Task.find({
@@ -1715,7 +1713,11 @@ export const getMonthlyAttendance = async (req, res) => {
       try {
         // Handle ISO format like "2025-03-10T09:30:00.000Z"
         if (timeStr.includes('T')) {
-          return new Date(timeStr);
+          let t = timeStr;
+          if (!t.endsWith('Z') && !t.match(/[+-]\d{2}:\d{2}$/)) {
+            t += '+05:30';
+          }
+          return new Date(t);
         }
         // Handle "HH:mm" or "HH:mm:ss" format
         const parts = timeStr.split(':');
@@ -1774,8 +1776,8 @@ export const getMonthlyAttendance = async (req, res) => {
         // Calculate hours worked for this day
         let hoursWorked = 0;
         if (attendanceRecord?.clockInTime && attendanceRecord?.clockOutTime) {
-          const clockIn = parseClockTime(date, attendanceRecord.clockInTime);
-          const clockOut = parseClockTime(date, attendanceRecord.clockOutTime);
+          const clockIn = parseClockTime(date, decryptTime(attendanceRecord.clockInTime));
+          const clockOut = parseClockTime(date, decryptTime(attendanceRecord.clockOutTime));
           if (clockIn && clockOut && clockOut > clockIn) {
             hoursWorked = (clockOut - clockIn) / (1000 * 60 * 60);
             // Subtract break time (stored in minutes)
@@ -1792,7 +1794,7 @@ export const getMonthlyAttendance = async (req, res) => {
           // Calculate presence steps based on hours worked relative to required hours
           const fraction = hoursWorked / requiredHoursPerDay;
 
-          if (fraction >= 0.95) { // 95% or more is a full day
+          if (fraction >= 0.98) { // 98% or more is a full day
             status = "Present";
             presence = 1;
           } else if (fraction >= 0.7) {
@@ -2167,7 +2169,13 @@ export const getWeeklyAttendance = async (req, res) => {
     const parseClockTime = (dateStr, timeStr) => {
       if (!timeStr) return null;
       try {
-        if (timeStr.includes("T")) return new Date(timeStr);
+        if (timeStr.includes("T")) {
+          let t = timeStr;
+          if (!t.endsWith("Z") && !t.match(/[+-]\d{2}:\d{2}$/)) {
+            t += "+05:30";
+          }
+          return new Date(t);
+        }
         const parts = timeStr.split(":");
         const d = new Date(dateStr);
         d.setHours(parseInt(parts[0]) || 0, parseInt(parts[1]) || 0, parseInt(parts[2]) || 0, 0);
@@ -2218,8 +2226,8 @@ export const getWeeklyAttendance = async (req, res) => {
         );
 
         let hoursWorked = 0;
-        const clockIn = record?.clockInTime || null;
-        const clockOut = record?.clockOutTime || null;
+        const clockIn = record?.clockInTime ? decryptTime(record.clockInTime) : null;
+        const clockOut = record?.clockOutTime ? decryptTime(record.clockOutTime) : null;
 
         if (clockIn && clockOut) {
           const inTime = parseClockTime(date, clockIn);
@@ -2240,13 +2248,13 @@ export const getWeeklyAttendance = async (req, res) => {
 
         if (hoursWorked > 0) {
           const fraction = hoursWorked / requiredHoursPerDay;
-          if (fraction >= 0.95)      { status = "Present";           presence = 1;    }
-          else if (fraction >= 0.7)  { status = "Three Quarter Day"; presence = 0.75; }
-          else if (fraction >= 0.45) { status = "Half Day";          presence = 0.5;  }
-          else                       { status = "Quarter Day";        presence = 0.25; }
+          if (fraction >= 0.98) { status = "Present"; presence = 1; }
+          else if (fraction >= 0.7) { status = "Three Quarter Day"; presence = 0.75; }
+          else if (fraction >= 0.45) { status = "Half Day"; presence = 0.5; }
+          else { status = "Quarter Day"; presence = 0.25; }
         } else if (isToday && clockIn) {
-            status = "Clocked In";  // clocked in but not out yet
-          } else if (isLeaveApplied) {
+          status = "Clocked In";  // clocked in but not out yet
+        } else if (isLeaveApplied) {
           status = "On Leave";
           if (isPastOrToday) leavesTaken += 1;
         } else if (isPastOrToday) {
@@ -2308,3 +2316,4 @@ export const getWeeklyAttendance = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
