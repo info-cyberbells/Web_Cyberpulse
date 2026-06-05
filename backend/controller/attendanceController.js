@@ -1428,16 +1428,18 @@ export const getPreviousDayAutoClockOutEmployees = async (req, res) => {
 
 //AUTO CLOCK-OUT CRON 
 export const runAutoClockOutJob = async () => {
-  console.log('🕒 Running daily auto clock-out process at 9:00 PM via Agenda...');
+  console.log('🕒 Running daily auto clock-out process via Agenda...');
 
   try {
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 
-    //only for your specific org
-    const TARGET_ORG_ID = '686e0094275619eb4b6bddab';
+    const TARGET_ORGS = [
+      '686e0094275619eb4b6bddab',
+      '69dc91330cf75741348c30a2',
+    ];
 
     const orgEmployeeIds = await Employee.find(
-      { organizationId: TARGET_ORG_ID },
+      { organizationId: { $in: TARGET_ORGS } },
       '_id'
     );
     const empIds = orgEmployeeIds.map(e => e._id);
@@ -1454,17 +1456,16 @@ export const runAutoClockOutJob = async () => {
       return;
     }
 
-    const fixedClockOutTime = `${today}T13:00:00.000Z`;
-
     for (const attendance of unclockedEmployees) {
-      // Pause all running tasks for this employee before clocking out
+      const clockInTime = new Date(attendance.clockInTime);
+      const clockOutTime = new Date(clockInTime.getTime() + 9 * 60 * 60 * 1000); // +9 hours
+
       const runningTasks = await Task.find({
         employeeId: attendance.employeeId,
         status: 'In Progress',
         isDeleted: false
       });
 
-      const clockOutTime = new Date(fixedClockOutTime);
       for (const task of runningTasks) {
         if (task.workSessions.length > 0) {
           const currentSession = task.workSessions[task.workSessions.length - 1];
@@ -1480,7 +1481,7 @@ export const runAutoClockOutJob = async () => {
         console.log(`Auto-paused task ${task._id} for employee ${attendance.employeeId}`);
       }
 
-      attendance.clockOutTime = fixedClockOutTime;
+      attendance.clockOutTime = clockOutTime.toISOString();
       attendance.isEmergency = true;
       attendance.emergencyReason = 'Auto Clock-Out due to no manual clock-out';
       attendance.autoClockOut = true;
@@ -1491,81 +1492,7 @@ export const runAutoClockOutJob = async () => {
       }
 
       await attendance.save();
-
-      console.log(`Auto clocked out employee: ${attendance.employeeId} at ${attendance.clockOutTime}`);
-    }
-
-    console.log(' Auto clock-out process completed successfully!');
-  } catch (error) {
-    console.error('Error during auto clock-out:', error.message);
-  }
-};
-
-//  AUTO CLOCKOUT CRON FOR DHAAM
-export const runAutoClockOutJobOrg2 = async () => {
-  console.log('🕒 Running daily auto clock-out process at 7:00 PM via Agenda...');
-
-  try {
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
-
-    const TARGET_ORG_ID = '69dc91330cf75741348c30a2';
-
-    const orgEmployeeIds = await Employee.find(
-      { organizationId: TARGET_ORG_ID },
-      '_id'
-    );
-    const empIds = orgEmployeeIds.map(e => e._id);
-
-    const unclockedEmployees = await Attendance.find({
-      clockInTime: { $exists: true },
-      clockOutTime: null,
-      date: today,
-      employeeId: { $in: empIds },
-    });
-
-    if (unclockedEmployees.length === 0) {
-      console.log('No employees require auto clock-out today.');
-      return;
-    }
-
-    const fixedClockOutTime = `${today}T13:30:00.000Z`;
-
-    for (const attendance of unclockedEmployees) {
-      const runningTasks = await Task.find({
-        employeeId: attendance.employeeId,
-        status: 'In Progress',
-        isDeleted: false
-      });
-
-      const clockOutTime = new Date(fixedClockOutTime);
-      for (const task of runningTasks) {
-        if (task.workSessions.length > 0) {
-          const currentSession = task.workSessions[task.workSessions.length - 1];
-          if (!currentSession.endTime) {
-            currentSession.endTime = clockOutTime;
-            currentSession.duration = Math.floor((clockOutTime - currentSession.startTime) / 1000);
-            task.duration += currentSession.duration;
-          }
-        }
-        task.status = 'Paused';
-        task.pauseTime = clockOutTime;
-        await task.save();
-        console.log(`Auto-paused task ${task._id} for employee ${attendance.employeeId}`);
-      }
-
-      attendance.clockOutTime = fixedClockOutTime;
-      attendance.isEmergency = true;
-      attendance.emergencyReason = 'Auto Clock-Out due to no manual clock-out';
-      attendance.autoClockOut = true;
-      attendance.Employeestatus = 'clocked out';
-
-      if (!attendance.workingDay || attendance.workingDay === 0) {
-        attendance.workingDay = 1;
-      }
-
-      await attendance.save();
-
-      console.log(`Auto clocked out employee: ${attendance.employeeId} at ${attendance.clockOutTime}`);
+      console.log(`Auto clocked out employee: ${attendance.employeeId} at ${clockOutTime.toISOString()}`);
     }
 
     console.log('✅ Auto clock-out process completed successfully!');
@@ -1573,7 +1500,6 @@ export const runAutoClockOutJobOrg2 = async () => {
     console.error('Error during auto clock-out:', error.message);
   }
 };
-
 
 
 export const getMonthlyAttendance = async (req, res) => {

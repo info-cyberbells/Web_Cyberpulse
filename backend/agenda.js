@@ -1,7 +1,7 @@
 import { Agenda } from 'agenda';
 import { MongoBackend } from '@agendajs/mongo-backend';
 import mongoose from 'mongoose';
-import { runAutoClockOutJob, runAutoClockOutJobOrg2 } from './controller/attendanceController.js';
+import { runAutoClockOutJob } from './controller/attendanceController.js'; 
 
 let agenda;
 
@@ -41,9 +41,6 @@ export const initAgenda = async () => {
     await runAutoClockOutJob();
   });
 
-  agenda.define('daily-auto-clock-out-org2', async (job) => {
-    await runAutoClockOutJobOrg2();
-  });
 
   // Start agenda
   await agenda.start();
@@ -56,7 +53,7 @@ export const initAgenda = async () => {
   //                  (this prevents the "runs in afternoon" bug)
   // ──────────────────────────────────────────────────────────────────
 
-  const jobNames = ['daily-auto-clock-out', 'daily-auto-clock-out-org2'];
+  const jobNames = ['daily-auto-clock-out'];
   const collection = mongoose.connection.collection('agendaJobs');
 
   for (const jobName of jobNames) {
