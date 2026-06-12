@@ -41,38 +41,26 @@ export const initAgenda = async () => {
     await runAutoClockOutJob();
   });
 
-
-  // Start agenda
-  await agenda.start();
-  console.log('🚀 Agenda started successfully');
-
   // ──────────────────────────────────────────────────────────────────
   //  RESTART-SAFE SCHEDULING
-  //  • On first run: creates the jobs with correct nextRunAt (9 PM IST)
-  //  • On restart:   skips re-scheduling so nextRunAt is NOT recalculated
-  //                  (this prevents the "runs in afternoon" bug)
+  //  • Updates or creates the jobs with correct cron string (9 PM IST)
+  //  • Safety fix for stale nextRunAt dates
   // ──────────────────────────────────────────────────────────────────
 
   const jobNames = ['daily-auto-clock-out'];
   const collection = mongoose.connection.collection('agendaJobs');
 
   for (const jobName of jobNames) {
+    // 1. Force the correct cron interval in the DB so it doesn't get stuck on old schedules
+    // Using UTC cron: 30 15 * * * = 3:30 PM UTC = 9:00 PM IST
+    await agenda.every('30 15 * * *', jobName, null, { skipImmediate: true });
+
+    // 2. Check the database to ensure the nextRunAt date isn't stuck in the past
     const existing = await collection.findOne({ name: jobName });
-
-    if (!existing) {
-      // First time — create the recurring job
-      // Using UTC cron: 30 15 * * * = 3:30 PM UTC = 9:00 PM IST
-      await agenda.every('30 15 * * *', jobName, null, { skipImmediate: true });
-      console.log(`🕒 Created ${jobName} — will run daily at 9:00 PM IST`);
-    } else {
-      // Job already exists in MongoDB — don't call every() again
+    if (existing) {
       const nextRun = existing.nextRunAt;
-      const nextRunIST = nextRun
-        ? new Date(nextRun).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
-        : 'NOT SET';
-      console.log(`🕒 ${jobName} already exists — next run: ${nextRunIST} IST`);
-
-      // Safety: if nextRunAt is in the past (stale), fix it
+      
+      // Safety: if nextRunAt is in the past (stale), fix it to the future
       if (!nextRun || new Date(nextRun) < new Date()) {
         const next9pm = getNext9pmIST();
         await collection.updateOne(
@@ -80,9 +68,18 @@ export const initAgenda = async () => {
           { $set: { nextRunAt: next9pm } }
         );
         console.log(`  ⚠️  Fixed stale nextRunAt → ${next9pm.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST`);
+      } else {
+        const nextRunIST = new Date(nextRun).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+        console.log(`🕒 ${jobName} next run: ${nextRunIST} IST`);
       }
+    } else {
+      console.log(`🕒 Created ${jobName} — will run daily at 9:00 PM IST`);
     }
   }
+
+  // Start agenda AFTER fixing the dates so it doesn't pick up old jobs immediately
+  await agenda.start();
+  console.log('🚀 Agenda started successfully');
 };
 
 export const getAgenda = () => agenda;

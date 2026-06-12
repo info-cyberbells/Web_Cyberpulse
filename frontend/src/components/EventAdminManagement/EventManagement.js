@@ -751,7 +751,12 @@ const EventManagement = () => {
                   ) : (
                     <CelebrationContainer>
                       {getCurrentMonthCelebrations().map((celebration, index) => {
-                        const isToday = todaysCelebrations.some(tc => tc.name === celebration.name);
+                        const isToday = todaysCelebrations.some(
+                          (tc) =>
+                            tc.name === celebration.name &&
+                            tc.type === celebration.type &&
+                            tc.date.getTime() === celebration.date.getTime()
+                        );
 
                         return (
                           <CelebrationCard
@@ -893,8 +898,8 @@ const EventManagement = () => {
               const isPast = daysUntil !== null && daysUntil < 0;
               const statusColor =
                 event.status === "completed" ? "#4caf50" :
-                event.status === "cancelled" ? "#f44336" :
-                event.status === "postponed" ? "#ff9800" : "#1976d2";
+                  event.status === "cancelled" ? "#f44336" :
+                    event.status === "postponed" ? "#ff9800" : "#1976d2";
 
               return (
                 <Card
